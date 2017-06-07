@@ -1,4 +1,4 @@
-package se.kth.edge.updatemanagement;
+package se.kth.edge;
 
 import java.util.Collection;
 import java.util.List;
@@ -8,7 +8,7 @@ import java.util.List;
  */
 public class CacheSizePolicies {
 
-    public static int computeEagerOptimalOnline(int t, int T, int w, Collection<List<Integer>> arrivals) {
+    public static int computeEagerOptimalOnline(long t, long T, int w, Collection<List<Long>> arrivals) {
 
         double t2 = (double) (t - T) / (double) w;
         double pSum = 0;
@@ -21,7 +21,7 @@ public class CacheSizePolicies {
         return (int) Math.ceil(pSum);
     }
 
-    public static int computeLazyOptimalOnline(int t, int endTime, double avgArrivalRate, float avgBw) // pessimistic
+    public static int computeLazyOptimalOnline(long t, long endTime, double avgArrivalRate, float avgBw) // pessimistic
     {
         int c = (int) ((avgBw * (endTime - t)) - computeRemainingCacheMisses(avgArrivalRate, t, endTime));
 
@@ -29,7 +29,7 @@ public class CacheSizePolicies {
     }
 
     // Compute integral, a definite integral for a constant value that is equal to calculate the area of a rectangle.
-    private static double computeRemainingCacheMisses(double arrivalRate, int t, int endTime) {
+    private static double computeRemainingCacheMisses(double arrivalRate, long t, long endTime) {
 
         return (endTime - t) * arrivalRate;
     }
