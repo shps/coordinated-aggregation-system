@@ -14,17 +14,25 @@ public class CacheManager {
     private int nArrivals = 0;
     private int nArrivalsPrevWindow = 0;
     private double laziness = 0.25;
+    private int w;
 
     public enum EvictionPolicies {
         LRU, LFU
     }
 
-    public CacheManager(EvictionPolicies policy) {
+    public CacheManager(EvictionPolicies policy, int window) {
         if (policy == EvictionPolicies.LRU) {
             cache = new PriorityQueue<>(new RecentlyUsedComparator());
         } else {
             cache = new PriorityQueue<>(new FrequentlyUsedComparator());
         }
+
+        this.w = window;
+    }
+
+    public CacheManager(EvictionPolicies policy, int window, float laziness) {
+        this(policy, window);
+        this.laziness = laziness;
     }
 
     /**
@@ -64,10 +72,22 @@ public class CacheManager {
         nArrivals++;
     }
 
-    
+    public List<CacheEntry> trigger(long t, long windowStartTime, float avgBw) {
+        List<CacheEntry> evictedEntries = new LinkedList<>();
+        int size = computeCacheSize(t, windowStartTime, avgBw);
+
+        if (cache.size() > size) {
+            int evictionSize = cache.size() - size;
+            for (int i = 0; i < evictionSize; i++) {
+                evictedEntries.add(cache.poll());
+            }
+        }
+
+        return evictedEntries;
+    }
 
     // TODO: 2017-06-06  compute avgBw
-    public int computeCacheSize(long t, long startTime, int w, float avgBw) {
+    public int computeCacheSize(long t, long startTime, float avgBw) {
         int eagerSize = CacheSizePolicies.computeEagerOptimalOnline(t, startTime, w, keyArrivalsPrevWindow.values());
         double avgArrivalRate = 0;
         if (t != startTime) {
@@ -90,6 +110,7 @@ public class CacheManager {
         cache.clear();
     }
 
+    
     private class FrequentlyUsedComparator implements Comparator<CacheEntry> {
 
         public int compare(CacheEntry e1, CacheEntry e2) {
