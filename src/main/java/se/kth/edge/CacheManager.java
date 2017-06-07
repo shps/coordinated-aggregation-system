@@ -8,13 +8,24 @@ import java.util.*;
 public class CacheManager {
 
     private HashMap<Integer, CacheEntry> cacheKeys = new HashMap<>();
-    private PriorityQueue<CacheEntry> cache = new PriorityQueue<>();
+    private PriorityQueue<CacheEntry> cache;
     private Map<Integer, List<Long>> keyArrivals = new HashMap<>();
     private Map<Integer, List<Long>> keyArrivalsPrevWindow = new HashMap<>();
     private int nArrivals = 0;
     private int nArrivalsPrevWindow = 0;
     private double laziness = 0.25;
 
+    public enum EvictionPolicies {
+        LRU, LFU
+    }
+
+    public CacheManager(EvictionPolicies policy) {
+        if (policy == EvictionPolicies.LRU) {
+            cache = new PriorityQueue<>(new RecentlyUsedComparator());
+        } else {
+            cache = new PriorityQueue<>(new FrequentlyUsedComparator());
+        }
+    }
 
     /**
      * cache insert.
@@ -53,6 +64,8 @@ public class CacheManager {
         nArrivals++;
     }
 
+    
+
     // TODO: 2017-06-06  compute avgBw
     public int computeCacheSize(long t, long startTime, int w, float avgBw) {
         int eagerSize = CacheSizePolicies.computeEagerOptimalOnline(t, startTime, w, keyArrivalsPrevWindow.values());
@@ -73,6 +86,37 @@ public class CacheManager {
         keyArrivals = new HashMap<>();
         nArrivalsPrevWindow = nArrivals;
         nArrivals = 0;
+        cacheKeys.clear();
+        cache.clear();
     }
 
+    private class FrequentlyUsedComparator implements Comparator<CacheEntry> {
+
+        public int compare(CacheEntry e1, CacheEntry e2) {
+            if (e1.numArrivals < e2.numArrivals) {
+                return -1;
+            }
+
+            if (e1.numArrivals > e2.numArrivals) {
+                return 1;
+            }
+
+            return 0;
+        }
+    }
+
+    private class RecentlyUsedComparator implements Comparator<CacheEntry> {
+
+        public int compare(CacheEntry e1, CacheEntry e2) {
+            if (e1.lastUpdateTime < e2.lastUpdateTime) {
+                return -1;
+            }
+
+            if (e1.lastUpdateTime > e2.lastUpdateTime) {
+                return 1;
+            }
+
+            return 0;
+        }
+    }
 }
