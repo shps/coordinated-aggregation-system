@@ -8,18 +8,28 @@ import java.util.List;
  */
 public class CacheSizePolicies {
 
-    public static int computeEagerOptimalOnline(long t, long T, int w, Collection<List<Long>> arrivals) {
+    public static double computeTBar(long t, long T, int w) {
+        return (double) (t - T) / (double) w;
+    }
 
-        double t2 = (double) (t - T) / (double) w;
+    public static int computeEagerOptimalOnline(long t, long T, int w, Collection<List<Long>> arrivalsPerKey) {
+
+        double tBar = computeTBar(t, T, w);
         double pSum = 0;
 
-        for (List l : arrivals) {
-            int w2 = w * l.size();
-            pSum += 1 - Math.pow(t2, w2) - Math.pow(1 - t2, w2);
+        for (List l : arrivalsPerKey) {
+
+            pSum += arrivalProbability(tBar, l.size());
         }
 
-        return (int) Math.ceil(pSum);
+        return (int) Math.round(pSum);
     }
+
+    public static double arrivalProbability(double tBar, double lambda) {
+//        double w2 = w * lambda;
+        return 1 - Math.pow(tBar, lambda) - Math.pow(1 - tBar, lambda);
+    }
+
 
     public static int computeLazyOptimalOnline(long t, long endTime, double avgArrivalRate, float avgBw) // pessimistic
     {
