@@ -5,6 +5,11 @@ package se.kth.stream;
  */
 public class Poisson {
 
+    /**
+     *
+     * @param lambda
+     * @return
+     */
     public static int getPoisson(double lambda) {
         double L = Math.exp(-lambda);
         double p = 1.0;

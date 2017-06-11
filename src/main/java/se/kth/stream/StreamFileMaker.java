@@ -10,11 +10,15 @@ public class StreamFileMaker {
 
     private static final String OUTPUT_DELIMITER = "\t";
 
+    /**
+     *
+     * @param outputFile
+     * @param tuples
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
     public static void writeToFile(String outputFile, LinkedList<Tuple> tuples) throws FileNotFoundException, IOException {
-//    String input = args[0];
-//    String output = args[1];
 
-//    String input = "/home/ganymedian/Desktop/kdd-results/samples/g220";
         try (PrintWriter writer = new PrintWriter(new FileOutputStream(new File(outputFile)))) {
             for (Tuple t : tuples) {
                 StringBuilder sb = new StringBuilder();

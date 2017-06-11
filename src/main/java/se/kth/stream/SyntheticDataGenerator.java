@@ -7,6 +7,12 @@ import java.util.LinkedList;
  */
 public class SyntheticDataGenerator {
 
+    /**
+     *
+     * @param duration
+     * @param lambdas
+     * @return
+     */
     public static LinkedList<Tuple> generateDataWithPoissonDistribution(int duration, double[] lambdas) {
         LinkedList<Tuple>[] events = new LinkedList[lambdas.length];
         for (int i = 0; i < lambdas.length; i++) {

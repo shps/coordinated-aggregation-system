@@ -10,6 +10,13 @@ public class StreamFileReader {
 
     private final static String DEFAULT_DELIMITER = "\t";
 
+    /**
+     *
+     * @param file
+     * @return
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
     public static LinkedList<Tuple> read(String file) throws FileNotFoundException, IOException {
         LinkedList<Tuple> tuples = new LinkedList<>();
         FileInputStream fis = new FileInputStream(new File(file));

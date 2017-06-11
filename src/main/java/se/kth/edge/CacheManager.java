@@ -7,38 +7,55 @@ import java.util.*;
  */
 public class CacheManager {
 
-    private HashMap<Integer, CacheEntry> cacheKeys = new HashMap<>();
+    private HashMap<Long, CacheEntry> cacheKeys = new HashMap<>();
     private PriorityQueue<CacheEntry> cache;
-    private Map<Integer, List<Long>> keyArrivals = new HashMap<>();
-    private Map<Integer, List<Long>> keyArrivalsPrevWindow = new HashMap<>();
+    private Map<Long, List<Long>> keyArrivals = new HashMap<>();
+    private Map<Long, List<Long>> keyArrivalsPrevWindow = new HashMap<>();
     private int nArrivals = 0;
     private int nArrivalsPrevWindow = 0;
     private double laziness = 0.25;
     private int w;
+    private SizePolicy sPolicy;
 
-    public enum EvictionPolicies {
+    public enum EvictionPolicy {
         LRU, LFU
     }
 
-    public CacheManager(EvictionPolicies policy, int window) {
-        if (policy == EvictionPolicies.LRU) {
+    public enum SizePolicy {
+        EAGER, LAZY, HYBRID
+    }
+
+    /**
+     * @param window
+     * @param sPolicy
+     * @param ePolicy
+     */
+    public CacheManager(int window, SizePolicy sPolicy, EvictionPolicy ePolicy) {
+        if (ePolicy == EvictionPolicy.LRU) {
             cache = new PriorityQueue<>(new RecentlyUsedComparator());
         } else {
             cache = new PriorityQueue<>(new FrequentlyUsedComparator());
         }
-
+        this.sPolicy = sPolicy;
         this.w = window;
     }
 
-    public CacheManager(EvictionPolicies policy, int window, float laziness) {
-        this(policy, window);
+    /**
+     * @param window
+     * @param s
+     * @param e
+     * @param laziness
+     */
+    public CacheManager(int window, SizePolicy s, EvictionPolicy e, float laziness) {
+        this(window, s, e);
         this.laziness = laziness;
     }
 
     /**
-     * cache insert.
+     * @param kid
+     * @param time
      */
-    public void insert(int kid, long time) {
+    public void insert(long kid, long time) {
         CacheEntry entry = null;
         if (cacheKeys.containsKey(kid)) {
             entry = cacheKeys.get(kid);
@@ -59,7 +76,7 @@ public class CacheManager {
      * @param kid
      * @param time arrival time
      */
-    public void addKeyArrival(int kid, long time) {
+    public void addKeyArrival(long kid, long time) {
         List<Long> arrivalTimes;
         if (keyArrivals.containsKey(kid)) {
             arrivalTimes = keyArrivals.get(kid);
@@ -72,6 +89,12 @@ public class CacheManager {
         nArrivals++;
     }
 
+    /**
+     * @param t
+     * @param windowStartTime
+     * @param avgBw
+     * @return
+     */
     public List<CacheEntry> trigger(long t, long windowStartTime, float avgBw) {
         List<CacheEntry> evictedEntries = new LinkedList<>();
         int size = computeCacheSize(t, windowStartTime, avgBw);
@@ -87,15 +110,37 @@ public class CacheManager {
     }
 
     // TODO: 2017-06-06  compute avgBw
+
+    /**
+     * @param t
+     * @param startTime
+     * @param avgBw
+     * @return
+     */
     public int computeCacheSize(long t, long startTime, float avgBw) {
-        int eagerSize = CacheSizePolicies.computeEagerOptimalOnline(t, startTime, w, keyArrivalsPrevWindow.values());
+        int cacheSize = 0;
+        if (sPolicy == SizePolicy.HYBRID) {
+            int eagerSize = this.computeEagerOptimal(t, startTime);
+            int lazySize = this.computeLazyOptimal(t, startTime, avgBw);
+            cacheSize = (int) (laziness * lazySize + (1 - laziness) * eagerSize);
+        } else if (sPolicy == SizePolicy.EAGER) {
+            cacheSize = this.computeEagerOptimal(t, startTime);
+        } else {
+            cacheSize = this.computeLazyOptimal(t, startTime, avgBw);
+        }
+        return cacheSize;
+    }
+
+    public int computeEagerOptimal(long t, long startTime) {
+        return CacheSizePolicies.computeEagerOptimalOnline(t, startTime, w, keyArrivalsPrevWindow.values());
+    }
+
+    public int computeLazyOptimal(long t, long startTime, float avgBw) {
         double avgArrivalRate = 0;
         if (t != startTime) {
             avgArrivalRate = (double) nArrivals / (t - startTime);
         }
-        int lazySize = CacheSizePolicies.computeLazyOptimalOnline(t, startTime + w, avgArrivalRate, avgBw);
-        int cacheSize = (int) (laziness * lazySize + (1 - laziness) * eagerSize);
-        return cacheSize;
+        return CacheSizePolicies.computeLazyOptimalOnline(t, startTime + w, avgArrivalRate, avgBw);
     }
 
     /**
@@ -110,7 +155,11 @@ public class CacheManager {
         cache.clear();
     }
 
-    
+    public int getCurrentCacheSize() {
+        return cache.size();
+    }
+
+
     private class FrequentlyUsedComparator implements Comparator<CacheEntry> {
 
         public int compare(CacheEntry e1, CacheEntry e2) {
