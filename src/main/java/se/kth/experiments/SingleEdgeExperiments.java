@@ -1,5 +1,6 @@
 package se.kth.experiments;
 
+import se.kth.edge.CacheEntry;
 import se.kth.edge.CacheManager;
 import se.kth.stream.StreamFileReader;
 import se.kth.stream.Tuple;
@@ -25,7 +26,7 @@ public class SingleEdgeExperiments {
         PrintWriter lWriter = new PrintWriter(new FileOutputStream(new File(lOutputFile)));
         PrintWriter hWriter = new PrintWriter(new FileOutputStream(new File(hOutputFile)));
         PrintWriter oWriter = new PrintWriter(new FileOutputStream(new File(oOutputFile)));
-        String header = "timestamp,window,size\n";
+        String header = "timestamp,window,cachesize,updatesize\n";
         eWriter.write(header);
         lWriter.write(header);
         hWriter.write(header);
@@ -45,6 +46,9 @@ public class SingleEdgeExperiments {
         LinkedList<Integer> eCacheSizes = new LinkedList<>();
         LinkedList<Integer> lCacheSizes = new LinkedList<>();
         LinkedList<Integer> hCacheSizes = new LinkedList<>();
+        LinkedList<Integer> eUpdateSize = new LinkedList<>();
+        LinkedList<Integer> lUpdateSize = new LinkedList<>();
+        LinkedList<Integer> hUpdateSize = new LinkedList<>();
 
         CacheManager eManager = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy.LFU, alpha);
         CacheManager lManager = new CacheManager(window, CacheManager.SizePolicy.LAZY, CacheManager.EvictionPolicy.LFU, alpha);
@@ -60,6 +64,9 @@ public class SingleEdgeExperiments {
                 lCacheSizes.clear();
                 hCacheSizes.clear();
                 triggerTimes.clear();
+                eUpdateSize.clear();
+                lUpdateSize.clear();
+                hUpdateSize.clear();
             }
 
             Tuple t1 = tuples.get(i); // current event
@@ -69,9 +76,9 @@ public class SingleEdgeExperiments {
             lManager.insert(t1.getKey(), t1.getTimestamp());
             hManager.insert(t1.getKey(), t1.getTimestamp());
 
-            eManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
-            lManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
-            hManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
+            List<CacheEntry> eUpdates = eManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
+            List<CacheEntry> lUpdates = lManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
+            List<CacheEntry> hUpdates = hManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
             triggerTimes.add(t1.getTimestamp());
 
             int eSize = eManager.getCurrentCacheSize();
@@ -81,6 +88,10 @@ public class SingleEdgeExperiments {
             int hSize = hManager.getCurrentCacheSize();
             hCacheSizes.add(hSize);
 
+            eUpdateSize.add(eUpdates.size());
+            lUpdateSize.add(lUpdates.size());
+            hUpdateSize.add(hUpdates.size());
+
             if (t1.getTimestamp() / window != t2.getTimestamp() / window) // t1 is the last arrival in the current window.
             {
                 // Last tuple in the current window
@@ -88,16 +99,16 @@ public class SingleEdgeExperiments {
                 // Jump to the end of the window
                 // Set for a new window.
                 windowStarts = true;
-                List<Integer> optimalSizes = computeOptimalCacheSizes(tuplesPerWindow);
+                OptimalCacheStatistics statistics = new OptimalCacheStatistics(tuplesPerWindow);
                 System.out.println(String.format("End of w%d", windowCounter));
                 System.out.println(String.format("Estimated Eager Cache Sizes: %s", Arrays.toString(eCacheSizes.toArray())));
                 System.out.println(String.format("Estimated Lazy Cache Sizes: %s", Arrays.toString(lCacheSizes.toArray())));
                 System.out.println(String.format("Estimated Hybrid Cache Sizes: %s", Arrays.toString(hCacheSizes.toArray())));
-                System.out.println(String.format("Optimal Cache Sizes: %s", Arrays.toString(optimalSizes.toArray())));
-                writeToFile(triggerTimes, windowCounter + 1, eCacheSizes, eWriter);
-                writeToFile(triggerTimes, windowCounter + 1, lCacheSizes, lWriter);
-                writeToFile(triggerTimes, windowCounter + 1, hCacheSizes, hWriter);
-                writeToFile(triggerTimes, windowCounter + 1, optimalSizes, oWriter);
+                System.out.println(String.format("Optimal Cache Sizes: %s", Arrays.toString(statistics.getCacheSizes().toArray())));
+                writeToFile(triggerTimes, windowCounter + 1, eCacheSizes, eUpdateSize, eWriter);
+                writeToFile(triggerTimes, windowCounter + 1, lCacheSizes, lUpdateSize, lWriter);
+                writeToFile(triggerTimes, windowCounter + 1, hCacheSizes, hUpdateSize, hWriter);
+                writeToFile(triggerTimes, windowCounter + 1, statistics.getCacheSizes(), statistics.getUpdateSizes(), oWriter);
                 windowCounter++;
             } else {
                 windowStarts = false;
@@ -115,39 +126,11 @@ public class SingleEdgeExperiments {
 
     }
 
-    private static void writeToFile(List<Long> triggerTimes, int window, List<Integer> cSizes, PrintWriter writer) {
+    private static void writeToFile(List<Long> triggerTimes, int window, List<Integer> cSizes, List<Integer> uSize, PrintWriter writer) {
         for (int i = 0; i < triggerTimes.size(); i++) {
-            writer.append(String.format("%d,%d,%d", triggerTimes.get(i), window, cSizes.get(i)));
+            writer.append(String.format("%d,%d,%d,%d", triggerTimes.get(i), window, cSizes.get(i), uSize.get(i)));
             writer.append("\n");
         }
-    }
-
-    private static List<Integer> computeOptimalCacheSizes(LinkedList<Tuple> tuplesPerWindow) {
-        LinkedList<Integer> cacheSizes = new LinkedList();
-
-        HashMap<Long, Long> keyFutureArrivals = new HashMap<>();
-        for (Tuple t : tuplesPerWindow) {
-            if (!keyFutureArrivals.containsKey(t.getKey())) {
-                keyFutureArrivals.put(t.getKey(), 0L);
-            }
-
-            keyFutureArrivals.put(t.getKey(), keyFutureArrivals.get(t.getKey()) + 1);
-        }
-
-        int leftKeys = keyFutureArrivals.size();
-        HashSet<Long> cachedKeys = new HashSet<>();
-
-        for (Tuple t: tuplesPerWindow) {
-            cachedKeys.add(t.getKey());
-            long n = keyFutureArrivals.get(t.getKey());
-            n = n - 1;
-            if (n == 0) {
-                cachedKeys.remove(t.getKey());
-            }
-            cacheSizes.add(cachedKeys.size());
-        }
-
-        return cacheSizes;
     }
 
 }
