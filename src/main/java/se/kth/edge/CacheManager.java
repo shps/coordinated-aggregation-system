@@ -17,6 +17,10 @@ public class CacheManager {
     private int w;
     private SizePolicy sPolicy;
 
+    public int getnArrivals() {
+        return nArrivals;
+    }
+
     public enum EvictionPolicy {
         LRU, LFU
     }
@@ -62,7 +66,7 @@ public class CacheManager {
             cache.remove(entry);
             entry.numArrivals++;
         } else {
-            entry = new CacheEntry();
+            entry = new CacheEntry(kid);
             entry.numArrivals = 1;
             cacheKeys.put(kid, entry);
         }
@@ -86,7 +90,7 @@ public class CacheManager {
         }
 
         arrivalTimes.add(time);
-        nArrivals++;
+        nArrivals = getnArrivals() + 1;
     }
 
     /**
@@ -109,7 +113,6 @@ public class CacheManager {
         return evictedEntries;
     }
 
-    // TODO: 2017-06-06  compute avgBw
 
     /**
      * @param t
@@ -138,7 +141,7 @@ public class CacheManager {
     public int computeLazyOptimal(long t, long startTime, float avgBw) {
         double avgArrivalRate = 0;
         if (t != startTime) {
-            avgArrivalRate = (double) nArrivals / (t - startTime);
+            avgArrivalRate = (double) getnArrivals() / (t - startTime);
         }
         return CacheSizePolicies.computeLazyOptimalOnline(t, startTime + w, avgArrivalRate, avgBw);
     }
@@ -149,7 +152,7 @@ public class CacheManager {
     public void nextWindow() {
         keyArrivalsPrevWindow = keyArrivals;
         keyArrivals = new HashMap<>();
-        nArrivalsPrevWindow = nArrivals;
+        nArrivalsPrevWindow = getnArrivals();
         nArrivals = 0;
         cacheKeys.clear();
         cache.clear();

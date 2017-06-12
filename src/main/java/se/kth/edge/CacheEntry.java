@@ -5,7 +5,13 @@ package se.kth.edge;
  */
 public class CacheEntry {
 
+    public final long key;
     public int numArrivals;
     public long lastUpdateTime;
+
+    public CacheEntry(long key)
+    {
+        this.key = key;
+    }
 
 }
