@@ -10,18 +10,24 @@ import java.util.List;
 /**
  * Created by Hooman on 2017-06-11.
  */
-public class OptimalCacheStatistics {
+public class EagerOptimalCacheStatistics {
 
     private final List<Long> triggerTimes = new LinkedList<>();
     private final List<List<Long>> triggeredKeys = new LinkedList<>();
     private final LinkedList<Integer> cacheSizes = new LinkedList();
     private final LinkedList<Integer> updateSizes = new LinkedList();
+    private int totalUpdates;
+    private int nKeys;
 
-    public OptimalCacheStatistics(LinkedList<Tuple> tuplesPerWindow) {
+    public EagerOptimalCacheStatistics(LinkedList<Tuple> tuplesPerWindow) {
+        totalUpdates = 0;
+        nKeys = 0;
         computeOptimalCacheSizes(tuplesPerWindow);
     }
 
-    public OptimalCacheStatistics(LinkedList<Tuple> tuplesPerWindow, long time, int timestep, int window) {
+    public EagerOptimalCacheStatistics(LinkedList<Tuple> tuplesPerWindow, long time, int timestep, int window) {
+        totalUpdates = 0;
+        nKeys = 0;
         computeOptimalCacheSizes(tuplesPerWindow, time, timestep, window);
     }
 
@@ -35,6 +41,7 @@ public class OptimalCacheStatistics {
 
             keyFutureArrivals.put(t.getKey(), keyFutureArrivals.get(t.getKey()) + 1);
         }
+        nKeys = keyFutureArrivals.size();
 
         int leftKeys = keyFutureArrivals.size();
         HashSet<Long> cachedKeys = new HashSet<>();
@@ -48,6 +55,7 @@ public class OptimalCacheStatistics {
             if (n == 0) {
                 cachedKeys.remove(t.getKey());
                 getTriggerTimes().add(t.getTimestamp()); //TODO trigger can be based on time steps.
+                totalUpdates = getTotalUpdates() + 1;
                 List<Long> keys = new LinkedList<>();
                 keys.add(t.getKey());
                 getTriggeredKeys().add(keys);
@@ -71,6 +79,7 @@ public class OptimalCacheStatistics {
             keyFutureArrivals.put(t.getKey(), keyFutureArrivals.get(t.getKey()) + 1);
         }
 
+        nKeys = keyFutureArrivals.size();
         int leftKeys = keyFutureArrivals.size();
         HashSet<Long> cachedKeys = new HashSet<>();
 
@@ -106,6 +115,7 @@ public class OptimalCacheStatistics {
                     keys.add(t.getKey());
                     getTriggeredKeys().add(keys);
                     updateSize++;
+                    totalUpdates = getTotalUpdates() + 1;
                 }
             }
         }
@@ -127,5 +137,13 @@ public class OptimalCacheStatistics {
 
     public LinkedList<Integer> getUpdateSizes() {
         return updateSizes;
+    }
+
+    public int getTotalUpdates() {
+        return totalUpdates;
+    }
+
+    public int getnKeys() {
+        return nKeys;
     }
 }

@@ -38,7 +38,10 @@ public class SingleEdgeExperiments {
     private static PrintWriter lWriter;
     private static PrintWriter hWriter;
     private static PrintWriter oWriter;
-
+    static int eUpdatesPerWindow;
+    static int lUpdatesPerWindow;
+    static int hUpdatesPerWindow;
+    private static final HashSet<Long> keysPerWindow = new HashSet<>();
 
     public static void main(String[] args) throws IOException {
 
@@ -74,6 +77,7 @@ public class SingleEdgeExperiments {
 
         long time = 0; //TODO create time step
         boolean windowStarts = true;
+
         while (true) {
             if (windowStarts) {
                 resetOnWindowStart();
@@ -86,30 +90,40 @@ public class SingleEdgeExperiments {
             List<CacheEntry> hUpdates = hManager.trigger(time, windowCounter * window, avgBw);
             triggerTimes.add(time);
 
-            int eSize = eManager.getCurrentCacheSize();
+            final int eSize = eManager.getCurrentCacheSize();
             eCacheSizes.add(eSize);
-            int lSize = lManager.getCurrentCacheSize();
+            final int lSize = lManager.getCurrentCacheSize();
             lCacheSizes.add(lSize);
-            int hSize = hManager.getCurrentCacheSize();
+            final int hSize = hManager.getCurrentCacheSize();
             hCacheSizes.add(hSize);
 
             eUpdateSize.add(eUpdates.size());
             lUpdateSize.add(lUpdates.size());
             hUpdateSize.add(hUpdates.size());
+            eUpdatesPerWindow += eUpdates.size();
+            lUpdatesPerWindow += lUpdates.size();
+            hUpdatesPerWindow += hUpdates.size();
 
             if (time == ((windowCounter + 1) * window)) // end of the window
             {
+                int uKeys = keysPerWindow.size();
+                eUpdatesPerWindow += eSize;
+                lUpdatesPerWindow += lSize;
+                hUpdatesPerWindow += hSize;
+                int nArrivals = tuplesPerWindow.size();
                 // Last tuple in the current window
 
                 // Jump to the end of the window
                 // Set for a new window.
                 windowStarts = true;
-                OptimalCacheStatistics statistics = new OptimalCacheStatistics(tuplesPerWindow, time - window, timestep, window);
+                EagerOptimalCacheStatistics statistics = new EagerOptimalCacheStatistics(tuplesPerWindow, time - window, timestep, window);
                 System.out.println(String.format("End of w%d", windowCounter));
-                System.out.println(String.format("Estimated Eager Cache Sizes: %s", Arrays.toString(eCacheSizes.toArray())));
-                System.out.println(String.format("Estimated Lazy Cache Sizes: %s", Arrays.toString(lCacheSizes.toArray())));
-                System.out.println(String.format("Estimated Hybrid Cache Sizes: %s", Arrays.toString(hCacheSizes.toArray())));
-                System.out.println(String.format("Optimal Cache Sizes: %s", Arrays.toString(statistics.getCacheSizes().toArray())));
+                System.out.println(String.format("BW Cost of Batching: %d", uKeys));
+                System.out.println(String.format("BW Cost of Streaming: %d", nArrivals));
+                System.out.println(String.format("Eager: BW Cost = %d, Estimated Cache Sizes: %s", eUpdatesPerWindow, Arrays.toString(eCacheSizes.toArray())));
+                System.out.println(String.format("Lazy: BW Cost = %d, Estimated Cache Sizes: %s", lUpdatesPerWindow, Arrays.toString(lCacheSizes.toArray())));
+                System.out.println(String.format("Hybrid: BW Cost = %d, Estimated Cache Sizes: %s", hUpdatesPerWindow, Arrays.toString(hCacheSizes.toArray())));
+                System.out.println(String.format("Optimal: BW Cost = %d, Cache Sizes: %s", statistics.getTotalUpdates(), Arrays.toString(statistics.getCacheSizes().toArray())));
                 writeToFile(triggerTimes, windowCounter + 1, eCacheSizes, eUpdateSize, eWriter);
                 writeToFile(triggerTimes, windowCounter + 1, lCacheSizes, lUpdateSize, lWriter);
                 writeToFile(triggerTimes, windowCounter + 1, hCacheSizes, hUpdateSize, hWriter);
@@ -124,6 +138,7 @@ public class SingleEdgeExperiments {
 
                 while (tuples.peek() != null && (tuples.peek().getTimestamp() < time)) {
                     Tuple t = tuples.poll();
+                    keysPerWindow.add(t.getKey());
                     tuplesPerWindow.add(t);
                     eManager.insert(t.getKey(), t.getTimestamp());
                     lManager.insert(t.getKey(), t.getTimestamp());
@@ -177,7 +192,7 @@ public class SingleEdgeExperiments {
                 // Set for a new window.
 
                 windowStarts = true;
-                OptimalCacheStatistics statistics = new OptimalCacheStatistics(tuplesPerWindow);
+                EagerOptimalCacheStatistics statistics = new EagerOptimalCacheStatistics(tuplesPerWindow);
                 System.out.println(String.format("End of w%d", windowCounter));
                 System.out.println(String.format("Estimated Eager Cache Sizes: %s", Arrays.toString(eCacheSizes.toArray())));
                 System.out.println(String.format("Estimated Lazy Cache Sizes: %s", Arrays.toString(lCacheSizes.toArray())));
@@ -207,6 +222,12 @@ public class SingleEdgeExperiments {
         eUpdateSize.clear();
         lUpdateSize.clear();
         hUpdateSize.clear();
+        eUpdatesPerWindow = 0;
+        lUpdatesPerWindow = 0;
+        hUpdatesPerWindow = 0;
+        keysPerWindow.clear();
+
+
     }
 
     private static void writeToFile(List<Long> triggerTimes, int window, List<Integer> cSizes, List<Integer> uSize, PrintWriter writer) {
