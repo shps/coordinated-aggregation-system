@@ -5,10 +5,7 @@ import se.kth.edge.CacheManager;
 import se.kth.stream.StreamFileReader;
 import se.kth.stream.Tuple;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -16,57 +13,136 @@ import java.util.*;
  */
 public class SingleEdgeExperiments {
 
+    private final static float alpha = 0.25f;
+    private final static float avgBw = 1;
+    private final static int window = 100;
+    private final static int timestep = 10;
+    private final static LinkedList<Tuple> tuplesPerWindow = new LinkedList<>();
+    private final static LinkedList<Integer> eCacheSizes = new LinkedList<>();
+    private final static LinkedList<Integer> lCacheSizes = new LinkedList<>();
+    private final static LinkedList<Integer> hCacheSizes = new LinkedList<>();
+    private final static LinkedList<Integer> eUpdateSize = new LinkedList<>();
+    private final static LinkedList<Integer> lUpdateSize = new LinkedList<>();
+    private final static LinkedList<Integer> hUpdateSize = new LinkedList<>();
+    private final static LinkedList<Long> triggerTimes = new LinkedList<>();
+    private final static CacheManager eManager = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy.LFU, alpha);
+    private final static CacheManager lManager = new CacheManager(window, CacheManager.SizePolicy.LAZY, CacheManager.EvictionPolicy.LFU, alpha);
+    private final static CacheManager hManager = new CacheManager(window, CacheManager.SizePolicy.HYBRID, CacheManager.EvictionPolicy.LFU, alpha);
+
+    private final static String inputFile = "/Users/ganymedian/Desktop/aggregation/synthdataset.txt";
+    private final static String eOutputFile = "/Users/ganymedian/Desktop/aggregation/eoutput.txt";
+    private final static String lOutputFile = "/Users/ganymedian/Desktop/aggregation/loutput.txt";
+    private final static String hOutputFile = "/Users/ganymedian/Desktop/aggregation/houtput.txt";
+    private final static String oOutputFile = "/Users/ganymedian/Desktop/aggregation/ooutput.txt";
+    private static PrintWriter eWriter;
+    private static PrintWriter lWriter;
+    private static PrintWriter hWriter;
+    private static PrintWriter oWriter;
+
+
     public static void main(String[] args) throws IOException {
-        String inputFile = "/Users/ganymedian/Desktop/aggregation/synthdataset.txt";
-        String eOutputFile = "/Users/ganymedian/Desktop/aggregation/eoutput.txt";
-        String lOutputFile = "/Users/ganymedian/Desktop/aggregation/loutput.txt";
-        String hOutputFile = "/Users/ganymedian/Desktop/aggregation/houtput.txt";
-        String oOutputFile = "/Users/ganymedian/Desktop/aggregation/ooutput.txt";
-        PrintWriter eWriter = new PrintWriter(new FileOutputStream(new File(eOutputFile)));
-        PrintWriter lWriter = new PrintWriter(new FileOutputStream(new File(lOutputFile)));
-        PrintWriter hWriter = new PrintWriter(new FileOutputStream(new File(hOutputFile)));
-        PrintWriter oWriter = new PrintWriter(new FileOutputStream(new File(oOutputFile)));
+
+        eWriter = new PrintWriter(new FileOutputStream(new File(eOutputFile)));
+        lWriter = new PrintWriter(new FileOutputStream(new File(lOutputFile)));
+        hWriter = new PrintWriter(new FileOutputStream(new File(hOutputFile)));
+        oWriter = new PrintWriter(new FileOutputStream(new File(oOutputFile)));
+
         String header = "timestamp,window,cachesize,updatesize\n";
         eWriter.write(header);
         lWriter.write(header);
         hWriter.write(header);
         oWriter.write(header);
         LinkedList<Tuple> tuples = StreamFileReader.read(inputFile);
-        LinkedList<Long> triggerTimes = new LinkedList<>();
         System.out.println(String.format("Number of tuples: %d", tuples.size()));
-        float alpha = 0.25f;
-        float avgBw = 100;
 
-        int window = 100;
+        timestepExecution(tuples, timestep);
+
+        eWriter.flush();
+        lWriter.flush();
+        hWriter.flush();
+        oWriter.flush();
+        eWriter.close();
+        lWriter.close();
+        hWriter.close();
+        oWriter.close();
+
+    }
+
+    private static void timestepExecution(LinkedList<Tuple> tuples, int timestep) throws IOException {
+
+        int windowCounter = 0;
+
+        long time = 0; //TODO create time step
+        boolean windowStarts = true;
+        while (true) {
+            if (windowStarts) {
+                resetOnWindowStart();
+                windowStarts = false;
+            }
+
+            //If timestep
+            List<CacheEntry> eUpdates = eManager.trigger(time, windowCounter * window, avgBw);
+            List<CacheEntry> lUpdates = lManager.trigger(time, windowCounter * window, avgBw);
+            List<CacheEntry> hUpdates = hManager.trigger(time, windowCounter * window, avgBw);
+            triggerTimes.add(time);
+
+            int eSize = eManager.getCurrentCacheSize();
+            eCacheSizes.add(eSize);
+            int lSize = lManager.getCurrentCacheSize();
+            lCacheSizes.add(lSize);
+            int hSize = hManager.getCurrentCacheSize();
+            hCacheSizes.add(hSize);
+
+            eUpdateSize.add(eUpdates.size());
+            lUpdateSize.add(lUpdates.size());
+            hUpdateSize.add(hUpdates.size());
+
+            if (time == ((windowCounter + 1) * window)) // end of the window
+            {
+                // Last tuple in the current window
+
+                // Jump to the end of the window
+                // Set for a new window.
+                windowStarts = true;
+                OptimalCacheStatistics statistics = new OptimalCacheStatistics(tuplesPerWindow, time - window, timestep, window);
+                System.out.println(String.format("End of w%d", windowCounter));
+                System.out.println(String.format("Estimated Eager Cache Sizes: %s", Arrays.toString(eCacheSizes.toArray())));
+                System.out.println(String.format("Estimated Lazy Cache Sizes: %s", Arrays.toString(lCacheSizes.toArray())));
+                System.out.println(String.format("Estimated Hybrid Cache Sizes: %s", Arrays.toString(hCacheSizes.toArray())));
+                System.out.println(String.format("Optimal Cache Sizes: %s", Arrays.toString(statistics.getCacheSizes().toArray())));
+                writeToFile(triggerTimes, windowCounter + 1, eCacheSizes, eUpdateSize, eWriter);
+                writeToFile(triggerTimes, windowCounter + 1, lCacheSizes, lUpdateSize, lWriter);
+                writeToFile(triggerTimes, windowCounter + 1, hCacheSizes, hUpdateSize, hWriter);
+                writeToFile(triggerTimes, windowCounter + 1, statistics.getCacheSizes(), statistics.getUpdateSizes(), oWriter);
+                windowCounter++;
+                if (tuples.isEmpty()) {
+                    break;
+                }
+            } else {
+
+                time += timestep;
+
+                while (tuples.peek() != null && (tuples.peek().getTimestamp() < time)) {
+                    Tuple t = tuples.poll();
+                    tuplesPerWindow.add(t);
+                    eManager.insert(t.getKey(), t.getTimestamp());
+                    lManager.insert(t.getKey(), t.getTimestamp());
+                    hManager.insert(t.getKey(), t.getTimestamp());
+                }
+            }
+        }
+
+    }
+
+    private static void tupleStepExecution(LinkedList<Tuple> tuples) {
         int windowCounter = 0;
 
         boolean windowStarts = true;
 
-        LinkedList<Tuple> tuplesPerWindow = new LinkedList<>();
-        LinkedList<Integer> eCacheSizes = new LinkedList<>();
-        LinkedList<Integer> lCacheSizes = new LinkedList<>();
-        LinkedList<Integer> hCacheSizes = new LinkedList<>();
-        LinkedList<Integer> eUpdateSize = new LinkedList<>();
-        LinkedList<Integer> lUpdateSize = new LinkedList<>();
-        LinkedList<Integer> hUpdateSize = new LinkedList<>();
-
-        CacheManager eManager = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy.LFU, alpha);
-        CacheManager lManager = new CacheManager(window, CacheManager.SizePolicy.LAZY, CacheManager.EvictionPolicy.LFU, alpha);
-        CacheManager hManager = new CacheManager(window, CacheManager.SizePolicy.HYBRID, CacheManager.EvictionPolicy.LFU, alpha);
-
+        long time = 0; //TODO create time step
         for (int i = 0; i < tuples.size() - 1; i++) {
             if (windowStarts) {
-                tuplesPerWindow.clear();
-                eManager.nextWindow();
-                lManager.nextWindow();
-                hManager.nextWindow();
-                eCacheSizes.clear();
-                lCacheSizes.clear();
-                hCacheSizes.clear();
-                triggerTimes.clear();
-                eUpdateSize.clear();
-                lUpdateSize.clear();
-                hUpdateSize.clear();
+                resetOnWindowStart();
             }
 
             Tuple t1 = tuples.get(i); // current event
@@ -76,6 +152,7 @@ public class SingleEdgeExperiments {
             lManager.insert(t1.getKey(), t1.getTimestamp());
             hManager.insert(t1.getKey(), t1.getTimestamp());
 
+            //If timestep
             List<CacheEntry> eUpdates = eManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
             List<CacheEntry> lUpdates = lManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
             List<CacheEntry> hUpdates = hManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
@@ -98,6 +175,7 @@ public class SingleEdgeExperiments {
 
                 // Jump to the end of the window
                 // Set for a new window.
+
                 windowStarts = true;
                 OptimalCacheStatistics statistics = new OptimalCacheStatistics(tuplesPerWindow);
                 System.out.println(String.format("End of w%d", windowCounter));
@@ -114,16 +192,21 @@ public class SingleEdgeExperiments {
                 windowStarts = false;
             }
         }
+    }
 
-        eWriter.flush();
-        lWriter.flush();
-        hWriter.flush();
-        oWriter.flush();
-        eWriter.close();
-        lWriter.close();
-        hWriter.close();
-        oWriter.close();
 
+    private static void resetOnWindowStart() {
+        tuplesPerWindow.clear();
+        eManager.nextWindow();
+        lManager.nextWindow();
+        hManager.nextWindow();
+        eCacheSizes.clear();
+        lCacheSizes.clear();
+        hCacheSizes.clear();
+        triggerTimes.clear();
+        eUpdateSize.clear();
+        lUpdateSize.clear();
+        hUpdateSize.clear();
     }
 
     private static void writeToFile(List<Long> triggerTimes, int window, List<Integer> cSizes, List<Integer> uSize, PrintWriter writer) {
