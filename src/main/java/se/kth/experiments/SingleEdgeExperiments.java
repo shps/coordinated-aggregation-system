@@ -75,7 +75,7 @@ public class SingleEdgeExperiments {
 
         int windowCounter = 0;
 
-        long time = 0; //TODO create time step
+        long time = 0;
         boolean windowStarts = true;
 
         while (true) {
