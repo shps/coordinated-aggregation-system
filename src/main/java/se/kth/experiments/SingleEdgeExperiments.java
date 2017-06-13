@@ -1,12 +1,17 @@
 package se.kth.experiments;
 
-import se.kth.edge.CacheEntry;
 import se.kth.edge.CacheManager;
 import se.kth.stream.StreamFileReader;
 import se.kth.stream.Tuple;
 
-import java.io.*;
-import java.util.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by Hooman on 2017-06-11.
@@ -85,9 +90,9 @@ public class SingleEdgeExperiments {
             }
 
             //If timestep
-            List<CacheEntry> eUpdates = eManager.trigger(time, windowCounter * window, avgBw);
-            List<CacheEntry> lUpdates = lManager.trigger(time, windowCounter * window, avgBw);
-            List<CacheEntry> hUpdates = hManager.trigger(time, windowCounter * window, avgBw);
+            long[] eUpdates = eManager.trigger(time, windowCounter * window, avgBw);
+            long[] lUpdates = lManager.trigger(time, windowCounter * window, avgBw);
+            long[] hUpdates = hManager.trigger(time, windowCounter * window, avgBw);
             triggerTimes.add(time);
 
             final int eSize = eManager.getCurrentCacheSize();
@@ -97,12 +102,12 @@ public class SingleEdgeExperiments {
             final int hSize = hManager.getCurrentCacheSize();
             hCacheSizes.add(hSize);
 
-            eUpdateSize.add(eUpdates.size());
-            lUpdateSize.add(lUpdates.size());
-            hUpdateSize.add(hUpdates.size());
-            eUpdatesPerWindow += eUpdates.size();
-            lUpdatesPerWindow += lUpdates.size();
-            hUpdatesPerWindow += hUpdates.size();
+            eUpdateSize.add(eUpdates.length);
+            lUpdateSize.add(lUpdates.length);
+            hUpdateSize.add(hUpdates.length);
+            eUpdatesPerWindow += eUpdates.length;
+            lUpdatesPerWindow += lUpdates.length;
+            hUpdatesPerWindow += hUpdates.length;
 
             if (time == ((windowCounter + 1) * window)) // end of the window
             {
@@ -168,9 +173,9 @@ public class SingleEdgeExperiments {
             hManager.insert(t1.getKey(), t1.getTimestamp());
 
             //If timestep
-            List<CacheEntry> eUpdates = eManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
-            List<CacheEntry> lUpdates = lManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
-            List<CacheEntry> hUpdates = hManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
+            long[] eUpdates = eManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
+            long[] lUpdates = lManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
+            long[] hUpdates = hManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
             triggerTimes.add(t1.getTimestamp());
 
             int eSize = eManager.getCurrentCacheSize();
@@ -180,9 +185,9 @@ public class SingleEdgeExperiments {
             int hSize = hManager.getCurrentCacheSize();
             hCacheSizes.add(hSize);
 
-            eUpdateSize.add(eUpdates.size());
-            lUpdateSize.add(lUpdates.size());
-            hUpdateSize.add(hUpdates.size());
+            eUpdateSize.add(eUpdates.length);
+            lUpdateSize.add(lUpdates.length);
+            hUpdateSize.add(hUpdates.length);
 
             if (t1.getTimestamp() / window != t2.getTimestamp() / window) // t1 is the last arrival in the current window.
             {

@@ -99,18 +99,18 @@ public class CacheManager {
      * @param avgBw
      * @return
      */
-    public List<CacheEntry> trigger(long t, long windowStartTime, float avgBw) {
-        List<CacheEntry> evictedEntries = new LinkedList<>();
+    public long[] trigger(long t, long windowStartTime, float avgBw) {
         int size = computeCacheSize(t, windowStartTime, avgBw);
-
         if (cache.size() > size) {
             int evictionSize = cache.size() - size;
+            long[] evictedEntries = new long[evictionSize];
             for (int i = 0; i < evictionSize; i++) {
-                evictedEntries.add(cache.poll());
+                evictedEntries[i] = cache.poll().key;
             }
+            return evictedEntries;
         }
 
-        return evictedEntries;
+        return new long[0];
     }
 
 
