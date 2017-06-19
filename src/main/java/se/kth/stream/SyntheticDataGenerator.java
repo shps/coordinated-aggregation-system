@@ -1,6 +1,7 @@
 package se.kth.stream;
 
 import java.util.LinkedList;
+import java.util.Set;
 
 /**
  * Created by Hooman on 2017-06-11.
@@ -8,12 +9,11 @@ import java.util.LinkedList;
 public class SyntheticDataGenerator {
 
     /**
-     *
      * @param duration
      * @param lambdas
      * @return
      */
-    public static LinkedList<Tuple> generateDataWithPoissonDistribution(int duration, double[] lambdas) {
+    public static LinkedList<Tuple> generateDataWithPoissonDistribution(int duration, int[] lambdas) {
         LinkedList<Tuple>[] events = new LinkedList[lambdas.length];
         for (int i = 0; i < lambdas.length; i++) {
             int t = 0;
@@ -24,6 +24,31 @@ public class SyntheticDataGenerator {
             }
         }
 
+        return sortTuples(events);
+    }
+
+    /**
+     * @param duration
+     * @param entries
+     * @return
+     */
+    public static LinkedList<Tuple> generateDataWithPoissonDistribution(int duration, Set<KeyEntry> entries) {
+        LinkedList<Tuple>[] events = new LinkedList[entries.size()];
+        int i = 0;
+        for (KeyEntry entry : entries) {
+            int t = 0;
+            events[i] = new LinkedList<>();
+            while ((t += Poisson.getPoisson(entry.arrivalTime)) <= duration) {
+                Tuple nextTuple = new Tuple(entry.id, t);
+                events[i].add(nextTuple);
+            }
+            i++;
+        }
+
+        return sortTuples(events);
+    }
+
+    private static LinkedList<Tuple> sortTuples(LinkedList<Tuple>[] events) {
         LinkedList<Tuple> tuples = new LinkedList<>();
         while (true) {
             long minTimestamp = Long.MAX_VALUE;

@@ -10,7 +10,7 @@ public class Poisson {
      * @param lambda
      * @return
      */
-    public static int getPoisson(double lambda) {
+    public static int getPoisson(int lambda) {
         double L = Math.exp(-lambda);
         double p = 1.0;
         int k = 0;
