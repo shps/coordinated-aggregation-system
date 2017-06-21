@@ -5,5 +5,5 @@ package se.kth.stream;
  */
 public class KeyEntry {
     public int id;
-    public int arrivalTime;
+    public int arrivalRate;
 }

@@ -10,16 +10,14 @@ import java.util.Set;
  * Created by Hooman on 2017-06-16.
  */
 public class SyntheticDataBuilderTest {
-    @Test
-    public void setKDistribution() throws Exception {
-    }
 
     @Test
     public void buildKeys() throws Exception {
         int numEdges = 3;
         int numKeys = 5;
         int window = 300;
-        SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, window);
+        SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
+                .UNIFORM);
         Set<KeyEntry>[] entries = builder.buildKeys();
         int sizePerGroup = Math.round((float) numKeys / (float) numEdges);
         int numEntries = 0;
@@ -35,7 +33,7 @@ public class SyntheticDataBuilderTest {
         assert actualSize == numEntries;
 
         numKeys = 12;
-        builder = new SyntheticDataBuilder(numEdges, numKeys, window);
+        builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution.UNIFORM);
         entries = builder.buildKeys();
         sizePerGroup = Math.round((float) numKeys / (float) numEdges);
         numEntries = 0;
@@ -52,11 +50,36 @@ public class SyntheticDataBuilderTest {
     }
 
     @Test
+    public void setKDistribution() throws Exception {
+        int numEdges = 3;
+        int numKeys = 0;
+        int window = 0;
+        SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
+                .UNIFORM);
+        float[] kDist = builder.getkDistributions();
+        assert kDist.length == numEdges;
+        float p = (float) 1 / (float) numEdges;
+        for (int i = 0; i < numEdges; i++) {
+            assert kDist[i] == p;
+        }
+
+        builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
+                .ASCENDING_EXP);
+        kDist = builder.getkDistributions();
+        assert kDist.length == numEdges;
+        float[] ps = new float[]{1f/9f, 3f/9f, 5f/9f};
+        for (int i = 0; i < numEdges; i++) {
+            assert kDist[i] == ps[i];
+        }
+    }
+
+    @Test
     public void getSubsetsWithSize() throws Exception {
         int numEdges = 3;
         int numKeys = 10;
         int window = 300;
-        SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, window);
+        SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
+                .UNIFORM);
         int count = 0;
         for (int i = 0; i <= numEdges; i++) {
             List<Set<Integer>> sets = builder.getSubsetsWithSize(i);

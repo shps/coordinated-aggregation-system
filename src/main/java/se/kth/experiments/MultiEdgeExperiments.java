@@ -19,8 +19,8 @@ public class MultiEdgeExperiments {
 
     static final CacheManager[] managers;
     static int numEdges = 4;
-    static int timestep = 20;
-    static int window = 100;
+    static int timestep = 200;
+    static int window = 3600;
     static int windowCounter;
     private final static float alpha = 0.25f;
     private final static float avgBw = 1;
@@ -30,14 +30,18 @@ public class MultiEdgeExperiments {
     private final static LinkedList<Integer>[] eCacheSizes;
     private final static LinkedList<Integer>[] eUpdateSize;
     private final static int[] eUpdatesPerWindow;
-    private final static String inputFile = "/Users/ganymedian/Desktop/aggregation/synthdataset.txt";
+    private final static String inputFile = "/Users/ganymedian/Desktop/aggregation/";
     private static int totalKeys;
     private static int totalUpdates;
     private static int totalArrivals;
     private static final KeyManager center;
+    private static final int DEFAULT_INTER_PRICE = 3;
+    private static final int DEFAULT_INTRA_PRICE = 1;
 
     static {
         center = new KeyManager(numEdges);
+        center.setInterPrice(DEFAULT_INTER_PRICE);
+        center.setIntraPrice(DEFAULT_INTRA_PRICE);
         tuplesPerWindow = new LinkedList[numEdges];
         triggerTimes = new LinkedList<>();
         keysPerWindow = new HashSet[numEdges];
@@ -59,7 +63,7 @@ public class MultiEdgeExperiments {
         LinkedList<Tuple>[] streams = new LinkedList[numEdges];
         // load the streams from files
         for (int i = 0; i < numEdges; i++) {
-            streams[i] = StreamFileReader.read(inputFile);
+            streams[i] = StreamFileReader.read(String.format("%s%d-stream.txt", inputFile, i));
             System.out.println(String.format("Number of tuples: %d", streams[i].size()));
         }
 
@@ -124,8 +128,11 @@ public class MultiEdgeExperiments {
         System.out.println(String.format("****** W%d ******", windowCounter));
         System.out.println(String.format("Key Similarities 1:%d: %s", numEdges, Arrays.toString(center
                 .getKeySimilarities())));
-        System.out.println(String.format("Oblivious Cost: %d, Coordinated Cost: %d, Cost Difference: %d", center
-                .getoCost(), center.getCoCost(), center.getCostDifference()));
+        System.out.println(String.format("Oblivious Cost: %d, Coordinated Cost: %d, Cost Difference: %d, Saving: %f",
+                center
+                        .getoCost(), center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() /
+                        (float) center
+                                .getoCost())));
     }
 
     private static void streamNextTimeStep(int eId, long time, LinkedList<Tuple>[] streams) {

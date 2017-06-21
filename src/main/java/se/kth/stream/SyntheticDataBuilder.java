@@ -9,18 +9,21 @@ public class SyntheticDataBuilder {
 
     private final int numEdgeDataCenters;
     private final int numKeys;
-    private float[] kDistributions;
+    private float[] kDistributions; // TODO Support distributions
     private List<Set<Integer>>[] powerset;
-    private final int window;
-    private final float DEFAULT_MAX_RATE = 0.1f; // The rate compared to the window size
-    private int minArrivalTime;
+    private final int maxArrivalRate = 100;
+    private final KDistribution dist;
 
-    public SyntheticDataBuilder(int numEdgeDataCenters, int numKeys, int window) {
-        this.window = window;
+    public enum KDistribution {
+        UNIFORM, ASCENDING_EXP, DESENDING_EXP
+    }
+
+    public SyntheticDataBuilder(int numEdgeDataCenters, int numKeys, KDistribution dist) {
+        this.dist = dist;
         this.numEdgeDataCenters = numEdgeDataCenters;
         this.numKeys = numKeys;
         kDistributions = new float[numEdgeDataCenters];
-        setDefaultKDistribution(getkDistributions(), numEdgeDataCenters); // TODO support distribution functions
+        setKDistribution(getkDistributions(), numEdgeDataCenters, this.dist);
         powerset = new List[numEdgeDataCenters + 1];
         for (int i = 0; i < powerset.length; i++) {
             powerset[i] = new LinkedList<>();
@@ -32,21 +35,30 @@ public class SyntheticDataBuilder {
         }
 
         createPowerSet(edgeDataCenters);
-        minArrivalTime = (int) (window * DEFAULT_MAX_RATE);
     }
 
-    private void setDefaultKDistribution(float[] kDistributions, int numEdgeDataCenters) {
-        float p = (float) 1 / (float) numEdgeDataCenters;
-        for (int i = 0; i < kDistributions.length; i++) {
-            kDistributions[i] = p;
+    private void setKDistribution(float[] kDistributions, int numEdgeDataCenters, KDistribution dist) {
+        if (dist == KDistribution.UNIFORM) {
+            float p = (float) 1 / (float) numEdgeDataCenters;
+            for (int i = 0; i < kDistributions.length; i++) {
+                kDistributions[i] = p;
+            }
+        } else if (dist == KDistribution.ASCENDING_EXP) {
+            float max = numEdgeDataCenters * numEdgeDataCenters;
+            float prev = 0;
+            for (int i = 1; i <= numEdgeDataCenters; i++) {
+                float curr = i * i;
+                kDistributions[i-1] = (curr - prev) / max;
+                prev = curr;
+            }
         }
     }
 
-    public void setKDistribution(float[] kDistributions) throws Exception {
-        if (kDistributions.length != this.getkDistributions().length)
-            throw new Exception("The KDistributions array size does not match!");
-        this.kDistributions = kDistributions;
-    }
+//    public void setKDistribution(float[] kDistributions) throws Exception {
+//        if (kDistributions.length != this.getkDistributions().length)
+//            throw new Exception("The KDistributions array size does not match!");
+//        this.kDistributions = kDistributions;
+//    }
 
     public Set<KeyEntry>[] buildKeys() {
         Set<KeyEntry>[] keysPerEdge = new HashSet[numEdgeDataCenters];
@@ -54,7 +66,6 @@ public class SyntheticDataBuilder {
             keysPerEdge[i] = new HashSet<>();
         }
         int kid = 0;
-        int maxTime = window - minArrivalTime;
         Random uniformRandom = new Random();
         for (int i = 0; i < getkDistributions().length; i++) {
             float p = getkDistributions()[i];
@@ -68,10 +79,10 @@ public class SyntheticDataBuilder {
                 int id = kid + j;
                 for (int e : edges) { // assign keys to the selected edges
                     // TODO add noise and make it independent from the window size.
-                    int arrivalTime = minArrivalTime + uniformRandom.nextInt(maxTime);
+                    int arrivalRate = uniformRandom.nextInt(maxArrivalRate);
                     KeyEntry k = new KeyEntry();
                     k.id = id;
-                    k.arrivalTime = arrivalTime;
+                    k.arrivalRate = arrivalRate;
                     keysPerEdge[e].add(k);
                 }
             }
@@ -86,7 +97,7 @@ public class SyntheticDataBuilder {
     }
 
     private Set<Set<Integer>> createPowerSet(Set<Integer> set) {
-        Set<Set<Integer>> sets = new HashSet<Set<Integer>>();
+        Set<Set<Integer>> sets = new HashSet();
         if (set.isEmpty()) {
             Set<Integer> emptySet = new HashSet<>();
             sets.add(emptySet);
@@ -113,4 +124,5 @@ public class SyntheticDataBuilder {
     public float[] getkDistributions() {
         return kDistributions;
     }
+
 }

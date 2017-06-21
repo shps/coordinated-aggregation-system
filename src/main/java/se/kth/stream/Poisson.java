@@ -1,16 +1,17 @@
 package se.kth.stream;
 
+import java.util.Random;
+
 /**
  * Created by Hooman on 2017-06-11.
  */
 public class Poisson {
 
     /**
-     *
      * @param lambda
      * @return
      */
-    public static int getPoisson(int lambda) {
+    public static int getPoisson(double lambda) {
         double L = Math.exp(-lambda);
         double p = 1.0;
         int k = 0;

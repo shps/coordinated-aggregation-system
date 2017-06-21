@@ -1,10 +1,5 @@
 package se.kth.stream;
 
-import se.kth.stream.KeyEntry;
-import se.kth.stream.StreamFileMaker;
-import se.kth.stream.SyntheticDataGenerator;
-import se.kth.stream.Tuple;
-
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Set;
@@ -15,21 +10,32 @@ import java.util.Set;
 public class DataGenerator {
 
     public static void main(String[] args) throws IOException {
-        int duration = 10 * 3600; // 1 hour
-        int[] arrivalTimes = new int[]{60, 10, 300, 600, 30, 150, 20, 80, 120, 350, 200, 70, 35, 25, 40, 120, 140, 160,
-                180, 200, 220};
-        String outputFile = "/Users/ganymedian/Desktop/aggregation/synthdataset.txt";
+        int numEdges = 4;
+        int numKeys = 1000;
+        int window = 3600;
+        int numWindow = 20;
+        String outputFile = "/Users/ganymedian/Desktop/aggregation/";
+        SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
+                .ASCENDING_EXP);
+        Set<KeyEntry>[] keys = builder.buildKeys();
 
-        generateData(arrivalTimes, duration, outputFile);
+        for (int i = 0; i < numEdges; i++) {
+            generateData(keys[i], numWindow, window, String.format("%s%d", outputFile, i));
+        }
     }
 
-    public static void generateData(int[] arrivalTimes, int duration, String outputFile) throws IOException {
-        LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithPoissonDistribution(duration, arrivalTimes);
-        StreamFileMaker.writeToFile(outputFile, tuples);
-    }
-
-    public static void generateData(Set<KeyEntry> entries, int duration, String outputFile) throws IOException {
-        LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithPoissonDistribution(duration, entries);
-        StreamFileMaker.writeToFile(outputFile, tuples);
+    /**
+     * @param entries
+     * @param numWindows
+     * @param window
+     * @param outputFile
+     * @throws IOException
+     */
+    public static void generateData(Set<KeyEntry> entries, int numWindows, int window, String outputFile) throws
+            IOException {
+        FileMaker.writeKeyArrivals(String.format("%s-keys.txt", outputFile), entries);
+        LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithPoissonDistribution(numWindows, window,
+                entries);
+        FileMaker.writeToFile(String.format("%s-stream.txt", outputFile), tuples);
     }
 }
