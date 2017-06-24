@@ -37,12 +37,9 @@ public class SingleEdgeExperiments {
             .EvictionPolicy.LFU, alpha);
     private final static CacheManager hCache = new CacheManager(window, CacheManager.SizePolicy.HYBRID,
             CacheManager.EvictionPolicy.LFU, alpha);
-    private final static Edge eManager = new Edge(0, eCache, new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE,
-            WorkloadMonitor.DEFAULT_BETA));
-    private final static Edge lManager = new Edge(0, lCache, new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE,
-            WorkloadMonitor.DEFAULT_BETA));
-    private final static Edge hManager = new Edge(0, hCache, new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE,
-            WorkloadMonitor.DEFAULT_BETA));
+    private final static Edge eManager = new Edge(0, eCache, new WorkloadMonitor());
+    private final static Edge lManager = new Edge(0, lCache, new WorkloadMonitor());
+    private final static Edge hManager = new Edge(0, hCache, new WorkloadMonitor());
 
     private final static String inputFile = "/Users/ganymedian/Desktop/aggregation/0-stream.txt";
     private final static String eOutputFile = "/Users/ganymedian/Desktop/aggregation/eoutput.txt";

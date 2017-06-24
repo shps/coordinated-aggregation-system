@@ -12,8 +12,7 @@ public class WorkloadMonitorTest {
     @Test
     public void computeWeights() {
 
-        WorkloadMonitor monitor = new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE, WorkloadMonitor
-                .DEFAULT_BETA);
+        WorkloadMonitor monitor = new WorkloadMonitor();
         // Test default history size and default weights computation
         float[] weights = monitor.getWeights();
         assert weights.length == 1;
@@ -33,8 +32,7 @@ public class WorkloadMonitorTest {
 
     @Test
     public void addKeyArrival() throws Exception {
-        WorkloadMonitor monitor = new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE, WorkloadMonitor
-                .DEFAULT_BETA);
+        WorkloadMonitor monitor = new WorkloadMonitor();
         monitor.addKeyArrival(0, 1);
         assert monitor.getnArrivals() == 1;
         monitor.addKeyArrival(0, 2);
@@ -45,8 +43,7 @@ public class WorkloadMonitorTest {
 
     @Test
     public void endOfWindow() throws Exception {
-        WorkloadMonitor monitor = new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE, WorkloadMonitor
-                .DEFAULT_BETA);
+        WorkloadMonitor monitor = new WorkloadMonitor();
         monitor.addKeyArrival(0, 1);
         monitor.addKeyArrival(1, 3);
         monitor.endOfWindow();

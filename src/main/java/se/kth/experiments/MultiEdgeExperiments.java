@@ -58,8 +58,7 @@ public class MultiEdgeExperiments {
             eUpdateSize[i] = new LinkedList<>();
             CacheManager cache = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy
                     .LFU);
-            WorkloadMonitor monitor = new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE, WorkloadMonitor
-                    .DEFAULT_BETA);
+            WorkloadMonitor monitor = new WorkloadMonitor();
             edges[i] = new Edge(i, cache, monitor);
         }
     }

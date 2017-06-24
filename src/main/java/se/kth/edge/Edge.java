@@ -33,6 +33,14 @@ public class Edge {
         return remaingingKeys;
     }
 
+    public WorkloadMonitor getWorkloadManager() {
+        return wMonitor;
+    }
+
+    public int getId() {
+        return eId;
+    }
+
     public CacheManager getCacheManager() {
         return cache;
     }

@@ -23,10 +23,18 @@ public class WorkloadMonitor {
     private int nArrivals = 0;
     private int nArrivalsPrevWindow = 0;
 
+    public WorkloadMonitor() {
+        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD);
+    }
+
     public WorkloadMonitor(int historySize, float beta) {
+        this(historySize, beta, DEFAULT_REGISTER_THRESHOLD);
+    }
+
+    public WorkloadMonitor(int historySize, float beta, int registerThreshold) {
         this.beta = beta;
         weights = computeWeights(historySize, beta);
-        this.registerThreshold = DEFAULT_REGISTER_THRESHOLD;
+        this.registerThreshold = registerThreshold;
     }
 
     public float[] getWeights() {
