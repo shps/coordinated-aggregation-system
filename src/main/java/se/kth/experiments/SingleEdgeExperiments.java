@@ -1,6 +1,8 @@
 package se.kth.experiments;
 
 import se.kth.edge.CacheManager;
+import se.kth.edge.Edge;
+import se.kth.edge.WorkloadMonitor;
 import se.kth.stream.StreamFileReader;
 import se.kth.stream.Tuple;
 
@@ -29,12 +31,18 @@ public class SingleEdgeExperiments {
     private final static LinkedList<Integer> lUpdateSize = new LinkedList<>();
     private final static LinkedList<Integer> hUpdateSize = new LinkedList<>();
     private final static LinkedList<Long> triggerTimes = new LinkedList<>();
-    private final static CacheManager eManager = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager
+    private final static CacheManager eCache = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager
             .EvictionPolicy.LFU, alpha);
-    private final static CacheManager lManager = new CacheManager(window, CacheManager.SizePolicy.LAZY, CacheManager
+    private final static CacheManager lCache = new CacheManager(window, CacheManager.SizePolicy.LAZY, CacheManager
             .EvictionPolicy.LFU, alpha);
-    private final static CacheManager hManager = new CacheManager(window, CacheManager.SizePolicy.HYBRID,
+    private final static CacheManager hCache = new CacheManager(window, CacheManager.SizePolicy.HYBRID,
             CacheManager.EvictionPolicy.LFU, alpha);
+    private final static Edge eManager = new Edge(0, eCache, new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE,
+            WorkloadMonitor.DEFAULT_BETA));
+    private final static Edge lManager = new Edge(0, lCache, new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE,
+            WorkloadMonitor.DEFAULT_BETA));
+    private final static Edge hManager = new Edge(0, hCache, new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE,
+            WorkloadMonitor.DEFAULT_BETA));
 
     private final static String inputFile = "/Users/ganymedian/Desktop/aggregation/0-stream.txt";
     private final static String eOutputFile = "/Users/ganymedian/Desktop/aggregation/eoutput.txt";
@@ -97,11 +105,11 @@ public class SingleEdgeExperiments {
             long[] hUpdates = hManager.trigger(time, windowCounter * window, avgBw);
             triggerTimes.add(time);
 
-            final int eSize = eManager.getCurrentCacheSize();
+            final int eSize = eManager.getCacheManager().getCurrentCacheSize();
             eCacheSizes.add(eSize);
-            final int lSize = lManager.getCurrentCacheSize();
+            final int lSize = lManager.getCacheManager().getCurrentCacheSize();
             lCacheSizes.add(lSize);
-            final int hSize = hManager.getCurrentCacheSize();
+            final int hSize = hManager.getCacheManager().getCurrentCacheSize();
             hCacheSizes.add(hSize);
 
             eUpdateSize.add(eUpdates.length);
@@ -153,9 +161,9 @@ public class SingleEdgeExperiments {
                     Tuple t = tuples.poll();
                     keysPerWindow.add(t.getKey());
                     tuplesPerWindow.add(t);
-                    eManager.insert(t.getKey(), t.getTimestamp());
-                    lManager.insert(t.getKey(), t.getTimestamp());
-                    hManager.insert(t.getKey(), t.getTimestamp());
+                    eManager.keyArrival(t.getKey(), t.getTimestamp());
+                    lManager.keyArrival(t.getKey(), t.getTimestamp());
+                    hManager.keyArrival(t.getKey(), t.getTimestamp());
                 }
             }
         }
@@ -176,9 +184,9 @@ public class SingleEdgeExperiments {
             Tuple t1 = tuples.get(i); // current event
             Tuple t2 = tuples.get(i + 1); // next event
             tuplesPerWindow.add(t1);
-            eManager.insert(t1.getKey(), t1.getTimestamp());
-            lManager.insert(t1.getKey(), t1.getTimestamp());
-            hManager.insert(t1.getKey(), t1.getTimestamp());
+            eManager.keyArrival(t1.getKey(), t1.getTimestamp());
+            lManager.keyArrival(t1.getKey(), t1.getTimestamp());
+            hManager.keyArrival(t1.getKey(), t1.getTimestamp());
 
             //If timestep
             long[] eUpdates = eManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
@@ -186,11 +194,11 @@ public class SingleEdgeExperiments {
             long[] hUpdates = hManager.trigger(t1.getTimestamp(), windowCounter * window, avgBw);
             triggerTimes.add(t1.getTimestamp());
 
-            int eSize = eManager.getCurrentCacheSize();
+            int eSize = eManager.getCacheManager().getCurrentCacheSize();
             eCacheSizes.add(eSize);
-            int lSize = lManager.getCurrentCacheSize();
+            int lSize = lManager.getCacheManager().getCurrentCacheSize();
             lCacheSizes.add(lSize);
-            int hSize = hManager.getCurrentCacheSize();
+            int hSize = hManager.getCacheManager().getCurrentCacheSize();
             hCacheSizes.add(hSize);
 
             eUpdateSize.add(eUpdates.length);
@@ -231,9 +239,9 @@ public class SingleEdgeExperiments {
 
     private static void resetOnWindowStart() throws Exception {
         tuplesPerWindow.clear();
-        eManager.nextWindow();
-        lManager.nextWindow();
-        hManager.nextWindow();
+        eManager.endOfWindow();
+        lManager.endOfWindow();
+        hManager.endOfWindow();
         eCacheSizes.clear();
         lCacheSizes.clear();
         hCacheSizes.clear();

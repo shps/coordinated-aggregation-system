@@ -26,6 +26,7 @@ public class Key {
         currentArrival = 0;
     }
 
+
     public int getHistorySize() {
         return arrivalHistory.length;
     }
@@ -77,5 +78,9 @@ public class Key {
     @Override
     public int hashCode() {
         return (int) (id ^ (id >>> 32));
+    }
+
+    public long getId() {
+        return id;
     }
 }

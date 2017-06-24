@@ -2,6 +2,8 @@ package se.kth.experiments;
 
 import se.kth.center.KeyManager;
 import se.kth.edge.CacheManager;
+import se.kth.edge.Edge;
+import se.kth.edge.WorkloadMonitor;
 import se.kth.stream.StreamFileReader;
 import se.kth.stream.Tuple;
 
@@ -16,7 +18,7 @@ import java.util.List;
  */
 public class MultiEdgeExperiments {
 
-    static final CacheManager[] managers;
+    static final Edge[] edges;
     static int numEdges = 4;
     static int timestep = 200;
     static int window = 3600;
@@ -47,14 +49,18 @@ public class MultiEdgeExperiments {
         eCacheSizes = new LinkedList[numEdges];
         eUpdateSize = new LinkedList[numEdges];
         eUpdatesPerWindow = new int[numEdges];
-        managers = new CacheManager[numEdges];
+        edges = new Edge[numEdges];
 
         for (int i = 0; i < numEdges; i++) {
             tuplesPerWindow[i] = new LinkedList<>();
             keysPerWindow[i] = new HashSet<>();
             eCacheSizes[i] = new LinkedList<>();
             eUpdateSize[i] = new LinkedList<>();
-            managers[i] = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy.LFU);
+            CacheManager cache = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy
+                    .LFU);
+            WorkloadMonitor monitor = new WorkloadMonitor(WorkloadMonitor.DEFAULT_HISTORY_SIZE, WorkloadMonitor
+                    .DEFAULT_BETA);
+            edges[i] = new Edge(i, cache, monitor);
         }
     }
 
@@ -139,14 +145,14 @@ public class MultiEdgeExperiments {
             Tuple t = streams[eId].poll();
             keysPerWindow[eId].add(t.getKey());
             tuplesPerWindow[eId].add(t);
-            managers[eId].insert(t.getKey(), t.getTimestamp());
+            edges[eId].keyArrival(t.getKey(), t.getTimestamp());
         }
     }
 
-    private static void endOfWindow(int eId, long time) {
+    private static void endOfWindow(int eId, long time) throws Exception {
         int uKeys = keysPerWindow[eId].size();
         totalKeys += uKeys;
-        eUpdatesPerWindow[eId] += managers[eId].getCurrentCacheSize();
+        eUpdatesPerWindow[eId] += edges[eId].endOfWindow().length;
         totalUpdates += eUpdatesPerWindow[eId];
         int nArrivals = tuplesPerWindow[eId].size();
         totalArrivals += nArrivals;
@@ -178,9 +184,9 @@ public class MultiEdgeExperiments {
     }
 
     private static void processNextTimeStep(int eId, long time) {
-        long[] eUpdates = managers[eId].trigger(time, windowCounter * window, avgBw);
+        long[] eUpdates = edges[eId].trigger(time, windowCounter * window, avgBw);
         center.update(eId, eUpdates);
-        final int eSize = managers[eId].getCurrentCacheSize();
+        final int eSize = edges[eId].getCacheManager().getCurrentCacheSize();
         eCacheSizes[eId].add(eSize);
         eUpdateSize[eId].add(eUpdates.length);
         eUpdatesPerWindow[eId] += eUpdates.length;
@@ -206,7 +212,6 @@ public class MultiEdgeExperiments {
             eUpdateSize[i].clear();
             eUpdatesPerWindow[i] = 0;
             keysPerWindow[i].clear();
-            managers[i].nextWindow();
         }
     }
 

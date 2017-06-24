@@ -26,9 +26,14 @@ public class KeyTest {
 
     @Test
     public void nextWindow() throws Exception {
-        int size = 2;
+        Key k = new Key(1, new float[]{1});
+        k.increaseArrival();
+        k.increaseArrival();
+        k.nextWindow();
+        assert k.getCurrentArrival() == 0;
+        assert k.getEstimatedArrivalRate() == 2;
         float[] weights = new float[]{0.5f, 0.5f};
-        Key k = new Key(1, weights);
+        k = new Key(1, weights);
         k.increaseArrival();
         k.increaseArrival();
         k.nextWindow();
