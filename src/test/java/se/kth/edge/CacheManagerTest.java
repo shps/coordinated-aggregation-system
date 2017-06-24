@@ -75,4 +75,25 @@ public class CacheManagerTest {
         assert manager.getnArrivals() == 0;
     }
 
+    @Test
+    public void computeWeights() {
+
+        CacheManager manager = new CacheManager(0, null, null);
+        // Test default history size and default weights computation
+        float[] weights = manager.getWeights();
+        assert weights.length == 1;
+        assert weights[0] == 1;
+
+        int historySize = 2;
+        float beta = 0.25f;
+        manager = new CacheManager(0, null, null, 0, historySize, beta);
+        weights = manager.getWeights();
+        assert weights.length == historySize;
+        float w1 = beta / (1 + beta);
+        float w2 = (float) 1 / (1 + beta);
+        assert weights[0] == w1;
+        assert weights[1] == w2;
+
+    }
+
 }

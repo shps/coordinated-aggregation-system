@@ -7,18 +7,27 @@ import java.util.*;
  */
 public class CacheManager {
 
-    private HashMap<Long, CacheEntry> cacheKeys = new HashMap<>();
-    private PriorityQueue<CacheEntry> cache;
-    private Map<Long, List<Long>> keyArrivals = new HashMap<>();
-    private Map<Long, List<Long>> keyArrivalsPrevWindow = new HashMap<>();
+    private final HashMap<Long, CacheEntry> cacheKeys = new HashMap<>();
+    private final PriorityQueue<CacheEntry> cache;
+    private final Set<Long> keyHasArrived = new HashSet<>();
+    private final Map<Long, Key> arrivalsHistories = new HashMap<>();
+    private final float[] weights;
     private int nArrivals = 0;
     private int nArrivalsPrevWindow = 0;
-    private double laziness = 0.25;
+    private final float laziness;
     private int w;
-    private SizePolicy sPolicy;
+    private final SizePolicy sPolicy;
+    private final float beta;
+    public final static float DEFAULT_BETA = 0.5f;
+    public final static int DEFAULT_HISTORY_SIZE = 1;
+    public final static float DEFAULT_LAZINESS = 0.25f;
 
     public int getnArrivals() {
         return nArrivals;
+    }
+
+    public float[] getWeights() {
+        return weights;
     }
 
     public enum EvictionPolicy {
@@ -35,13 +44,8 @@ public class CacheManager {
      * @param ePolicy
      */
     public CacheManager(int window, SizePolicy sPolicy, EvictionPolicy ePolicy) {
-        if (ePolicy == EvictionPolicy.LRU) {
-            cache = new PriorityQueue<>(new RecentlyUsedComparator());
-        } else {
-            cache = new PriorityQueue<>(new FrequentlyUsedComparator());
-        }
-        this.sPolicy = sPolicy;
-        this.w = window;
+
+        this(window, sPolicy, ePolicy, DEFAULT_LAZINESS);
     }
 
     /**
@@ -51,8 +55,45 @@ public class CacheManager {
      * @param laziness
      */
     public CacheManager(int window, SizePolicy s, EvictionPolicy e, float laziness) {
-        this(window, s, e);
+
+        this(window, s, e, laziness, DEFAULT_HISTORY_SIZE, DEFAULT_BETA);
+    }
+
+    /**
+     * @param window
+     * @param s
+     * @param e
+     * @param laziness
+     */
+    public CacheManager(int window, SizePolicy s, EvictionPolicy e, float laziness, int historySize, float beta) {
+
+        if (e == EvictionPolicy.LRU) {
+            cache = new PriorityQueue<>(new RecentlyUsedComparator());
+        } else {
+            cache = new PriorityQueue<>(new FrequentlyUsedComparator());
+        }
+        this.sPolicy = s;
+        this.w = window;
         this.laziness = laziness;
+        this.beta = beta;
+        weights = computeWeights(historySize, beta);
+    }
+
+    private float[] computeWeights(int historySize, float beta) {
+        float[] weights = new float[historySize];
+        int size = weights.length;
+        float[] wPrime = new float[size];
+        float sum = 0;
+        for (int i = 0; i < size; i++) {
+            wPrime[i] = (float) Math.pow(beta, size - i + 1);
+            sum += wPrime[i];
+        }
+
+        for (int i = 0; i < size; i++) {
+            weights[i] = wPrime[i] / sum;
+        }
+
+        return weights;
     }
 
     /**
@@ -81,16 +122,16 @@ public class CacheManager {
      * @param time arrival time
      */
     public void addKeyArrival(long kid, long time) {
-        List<Long> arrivalTimes;
-        if (keyArrivals.containsKey(kid)) {
-            arrivalTimes = keyArrivals.get(kid);
+        Key k;
+        if (arrivalsHistories.containsKey(kid)) {
+            k = arrivalsHistories.get(kid);
         } else {
-            arrivalTimes = new LinkedList<Long>();
-            keyArrivals.put(kid, arrivalTimes);
+            k = new Key(kid, getWeights());
+            arrivalsHistories.put(kid, k);
         }
-
-        arrivalTimes.add(time);
+        k.increaseArrival();
         nArrivals = getnArrivals() + 1;
+        keyHasArrived.add(kid);
     }
 
     /**
@@ -105,7 +146,9 @@ public class CacheManager {
             int evictionSize = cache.size() - size;
             long[] evictedEntries = new long[evictionSize];
             for (int i = 0; i < evictionSize; i++) {
-                evictedEntries[i] = cache.poll().key;
+                long key = cache.poll().key;
+                evictedEntries[i] = key;
+                keyHasArrived.remove(key);
             }
             return evictedEntries;
         }
@@ -135,7 +178,7 @@ public class CacheManager {
     }
 
     public int computeEagerOptimal(long t, long startTime) {
-        return CacheSizePolicies.computeEagerOptimalOnline(t, startTime, w, keyArrivalsPrevWindow.values());
+        return CacheSizePolicies.computeEagerOptimalOnline(t, startTime, w, keyHasArrived, arrivalsHistories);
     }
 
     public int computeLazyOptimal(long t, long startTime, float avgBw) {
@@ -149,13 +192,17 @@ public class CacheManager {
     /**
      * Call this method upon the start of each window.
      */
-    public void nextWindow() {
-        keyArrivalsPrevWindow = keyArrivals;
-        keyArrivals = new HashMap<>();
+    public void nextWindow() throws Exception {
         nArrivalsPrevWindow = getnArrivals();
         nArrivals = 0;
+        for (Key k : arrivalsHistories.values()) {
+            // You can remove keys that has zero estimated arrival rates.
+            k.nextWindow();
+        }
         cacheKeys.clear();
         cache.clear();
+        if (keyHasArrived.size() != 0)
+            throw new Exception("Key checkings are inconsistent!");
     }
 
     public int getCurrentCacheSize() {

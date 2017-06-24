@@ -5,7 +5,6 @@ import se.kth.edge.CacheManager;
 import se.kth.stream.StreamFileReader;
 import se.kth.stream.Tuple;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -59,7 +58,7 @@ public class MultiEdgeExperiments {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
         LinkedList<Tuple>[] streams = new LinkedList[numEdges];
         // load the streams from files
         for (int i = 0; i < numEdges; i++) {
@@ -70,7 +69,7 @@ public class MultiEdgeExperiments {
         timestepExecution(streams, timestep);
     }
 
-    private static void timestepExecution(LinkedList<Tuple>[] streams, int timestep) throws IOException {
+    private static void timestepExecution(LinkedList<Tuple>[] streams, int timestep) throws Exception {
 
         windowCounter = 0;
 
@@ -195,7 +194,7 @@ public class MultiEdgeExperiments {
         }
     }
 
-    private static void resetOnWindowStart() {
+    private static void resetOnWindowStart() throws Exception {
         center.reset();
         totalArrivals = 0;
         totalKeys = 0;
