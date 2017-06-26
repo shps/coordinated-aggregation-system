@@ -1,5 +1,8 @@
 package se.kth.edge;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Created by Hooman on 2017-06-24.
  */
@@ -8,6 +11,7 @@ public class Edge {
     private final int eId;
     private final WorkloadMonitor wMonitor;
     private final CacheManager cache;
+    private final Map<Long, Integer> coordinators = new HashMap<>();
 
     public Edge(int eId, CacheManager c, WorkloadMonitor m) {
         this.eId = eId;
@@ -16,6 +20,13 @@ public class Edge {
     }
 
     public void keyArrival(long kid, long time) {
+        this.keyArrival(kid, time, this.eId);
+    }
+
+    public void keyArrival(long kid, long time, int edgeId) {
+        if (edgeId != eId) {
+            // TODO this is an update from other edges
+        }
         cache.insert(kid, time);
         wMonitor.addKeyArrival(kid, time);
     }
@@ -26,11 +37,15 @@ public class Edge {
         return updates;
     }
 
+    public void updateCoordinators(Map<Long, Integer> newCoordinators) {
+        this.getCoordinators().putAll(newCoordinators);
+    }
+
     public long[] endOfWindow() throws Exception {
-        long[] remaingingKeys = cache.endOfWindow();
+        long[] remainingKeys = cache.endOfWindow();
         wMonitor.endOfWindow();
 
-        return remaingingKeys;
+        return remainingKeys;
     }
 
     public WorkloadMonitor getWorkloadManager() {
@@ -43,5 +58,9 @@ public class Edge {
 
     public CacheManager getCacheManager() {
         return cache;
+    }
+
+    public Map<Long, Integer> getCoordinators() {
+        return coordinators;
     }
 }
