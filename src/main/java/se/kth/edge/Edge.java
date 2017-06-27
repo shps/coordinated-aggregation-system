@@ -1,6 +1,8 @@
 package se.kth.edge;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,6 +37,26 @@ public class Edge {
         long[] updates = cache.trigger(t, windowStartTime, avgBw, wMonitor.getnArrivals(), wMonitor
                 .getArrivalsHistories());
         return updates;
+    }
+
+    public Map<Integer, List<Long>> getKeyCoordinator(long[] keys) {
+        Map<Integer, List<Long>> kc = new HashMap<>();
+        for (long key : keys) {
+            Integer c = coordinators.get(key);
+            if (c == null || c == Coordinator.SELF) {
+                c = eId;
+            }
+
+            List<Long> edgeKeys = kc.get(c);
+            if (edgeKeys == null) {
+                edgeKeys = new LinkedList<>();
+                kc.put(c, edgeKeys);
+            }
+
+            edgeKeys.add(key);
+        }
+
+        return kc;
     }
 
     public void updateCoordinators(Map<Long, Integer> newCoordinators) {

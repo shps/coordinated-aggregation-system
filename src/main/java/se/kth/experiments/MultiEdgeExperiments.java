@@ -1,17 +1,12 @@
 package se.kth.experiments;
 
 import se.kth.center.KeyManager;
-import se.kth.edge.CacheManager;
-import se.kth.edge.Edge;
-import se.kth.edge.WorkloadMonitor;
+import se.kth.edge.*;
 import se.kth.stream.StreamFileReader;
 import se.kth.stream.Tuple;
 
 import java.io.PrintWriter;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by Hooman on 2017-06-12.
@@ -29,15 +24,22 @@ public class MultiEdgeExperiments {
     private final static LinkedList<Long> triggerTimes;
     private static final HashSet<Long>[] keysPerWindow;
     private final static LinkedList<Integer>[] eCacheSizes;
-    private final static LinkedList<Integer>[] eUpdateSize;
+    //    private final static LinkedList<Integer>[] eUpdateSize;
+//    private final static LinkedList<Integer>[] eeUpdateSize;
+//    private final static LinkedList<Integer>[] cUpdateSize;
+    private final static Map<Integer, Map<Integer, List<Long>>> edgeToEdgeUpdates;
     private final static int[] eUpdatesPerWindow;
+    private final static int[] cUpdatesPerWindow;
     private final static String inputFile = "/Users/ganymedian/Desktop/aggregation/";
     private static int totalKeys;
     private static int totalUpdates;
+    private static int totalCenterUpdates;
+    private static int totalEdgeUpdates;
     private static int totalArrivals;
     private static final KeyManager center;
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
+    private final static Coordinator coordinator;
 
     static {
         center = new KeyManager(numEdges);
@@ -47,23 +49,30 @@ public class MultiEdgeExperiments {
         triggerTimes = new LinkedList<>();
         keysPerWindow = new HashSet[numEdges];
         eCacheSizes = new LinkedList[numEdges];
-        eUpdateSize = new LinkedList[numEdges];
+//        eUpdateSize = new LinkedList[numEdges];
+//        eeUpdateSize = new LinkedList[numEdges];
+//        cUpdateSize = new LinkedList[numEdges];
         eUpdatesPerWindow = new int[numEdges];
+        cUpdatesPerWindow = new int[numEdges];
         edges = new Edge[numEdges];
+        coordinator = new Coordinator(numEdges);
+        edgeToEdgeUpdates = new HashMap<>();
 
         for (int i = 0; i < numEdges; i++) {
             tuplesPerWindow[i] = new LinkedList<>();
             keysPerWindow[i] = new HashSet<>();
             eCacheSizes[i] = new LinkedList<>();
-            eUpdateSize[i] = new LinkedList<>();
+//            eUpdateSize[i] = new LinkedList<>();
             CacheManager cache = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy
                     .LFU);
             WorkloadMonitor monitor = new WorkloadMonitor();
             edges[i] = new Edge(i, cache, monitor);
+            edgeToEdgeUpdates.put(i, new HashMap<>());
         }
     }
 
     public static void main(String[] args) throws Exception {
+
         LinkedList<Tuple>[] streams = new LinkedList[numEdges];
         // load the streams from files
         for (int i = 0; i < numEdges; i++) {
@@ -89,7 +98,7 @@ public class MultiEdgeExperiments {
 
             triggerTimes.add(time);
             for (int i = 0; i < numEdges; i++) {
-                processNextTimeStep(i, time);
+                edgeToEdgeUpdates.put(i, processNextTimeStep(i, time));
             }
 
             if (time == ((windowCounter + 1) * window)) // end of the window
@@ -104,6 +113,11 @@ public class MultiEdgeExperiments {
                 printMultiEdgeStatistics(windowCounter);
                 center.onWindowEnd();
                 printCenterStatistics(center, windowCounter);
+                Map<Long, Integer> newCoordinators = coordinator.computeNewCoordinators();
+                // Report updated coordinators for keys to all edges (This can be asynchronous)
+                for (Edge e : edges) {
+                    e.updateCoordinators(newCoordinators);
+                }
                 windowCounter++;
                 if (emptyStream) {
                     break;
@@ -114,7 +128,7 @@ public class MultiEdgeExperiments {
                 boolean endOfStreams = false;
 
                 for (int i = 0; i < numEdges; i++) {
-                    streamNextTimeStep(i, time, streams);
+                    streamNextTimeStep(i, time, streams, edgeToEdgeUpdates.get(i));
                     if (streams[i].isEmpty()) {
                         endOfStreams = true;
                     }
@@ -133,40 +147,79 @@ public class MultiEdgeExperiments {
         System.out.println(String.format("Key Similarities 1:%d: %s", numEdges, Arrays.toString(center
                 .getKeySimilarities())));
         System.out.println(String.format("Oblivious Cost: %d, Coordinated Cost: %d, Cost Difference: %d, Saving: %f",
-                center
-                        .getoCost(), center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() /
-                        (float) center
-                                .getoCost())));
+                center.getoCost(), center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() /
+                        (float) center.getoCost())));
     }
 
-    private static void streamNextTimeStep(int eId, long time, LinkedList<Tuple>[] streams) {
-        while (streams[eId].peek() != null && (streams[eId].peek().getTimestamp() < time)) {
-            Tuple t = streams[eId].poll();
-            keysPerWindow[eId].add(t.getKey());
-            tuplesPerWindow[eId].add(t);
-            edges[eId].keyArrival(t.getKey(), t.getTimestamp());
+    private static void streamNextTimeStep(int srcEdge, long time, LinkedList<Tuple>[] streams, Map<Integer, List<Long>>
+            edgeUpdates) {
+        while (streams[srcEdge].peek() != null && (streams[srcEdge].peek().getTimestamp() < time)) {
+            Tuple t = streams[srcEdge].poll();
+            deliverTupleTo(srcEdge, srcEdge, t);
         }
+
+        long currentTime = time - 1;
+        // delivering the updates for other edges from the previous time step in the end of the current time step
+        int e2eUpdates = 0;
+        for (int dstEdge : edgeUpdates.keySet()) {
+            for (long key : convertToLongArray(edgeUpdates.get(dstEdge))) {
+                Tuple t = new Tuple(key, currentTime);
+                deliverTupleTo(srcEdge, dstEdge, t);
+                e2eUpdates++;
+            }
+        }
+        eUpdatesPerWindow[srcEdge] = e2eUpdates;
+    }
+
+    private static void deliverTupleTo(final int srcEdge, final int dstEdge, final Tuple t) {
+        keysPerWindow[dstEdge].add(t.getKey());
+        tuplesPerWindow[dstEdge].add(t);
+        edges[dstEdge].keyArrival(t.getKey(), t.getTimestamp(), srcEdge);
     }
 
     private static void endOfWindow(int eId, long time) throws Exception {
+        // TODO for now we ignore edge to edge communication of the last time step.
         int uKeys = keysPerWindow[eId].size();
         totalKeys += uKeys;
-        eUpdatesPerWindow[eId] += edges[eId].endOfWindow().length;
-        totalUpdates += eUpdatesPerWindow[eId];
+        cUpdatesPerWindow[eId] += edges[eId].endOfWindow().length;
+        totalUpdates += cUpdatesPerWindow[eId] + eUpdatesPerWindow[eId];
+        totalCenterUpdates += cUpdatesPerWindow[eId];
+        totalEdgeUpdates += eUpdatesPerWindow[eId];
         int nArrivals = tuplesPerWindow[eId].size();
         totalArrivals += nArrivals;
-        // Last tuple in the current window
 
-        // Jump to the end of the window
-        // Set for a new window.
+        //communications with the coordinator
+//        for (Edge e : edges) {
+        Set<Key> pendingKeys = edges[eId].getWorkloadManager().getPendingForRegister();
+        long[] keys = new long[pendingKeys.size()];
+        int[] arrivals = new int[pendingKeys.size()];
+        int i = 0;
+        for (Key k : pendingKeys) {
+            keys[i] = k.getId();
+            arrivals[i] = k.getEstimatedArrivalRate();
+            i++;
+        }
+        Set<Long> unregister = edges[eId].getWorkloadManager().getPendingUnRegister();
+        long[] keysToUnregister = new long[unregister.size()];
+        i = 0;
+        for (long k : unregister) {
+            keysToUnregister[i] = k;
+            i++;
+        }
+        coordinator.registerKeys(edges[eId].getId(), keys, arrivals);
+        coordinator.unregisterKeys(edges[eId].getId(), keysToUnregister);
+//        }
+
+        // After all the edges report (Not necessary to wait for all the edges)
+
         EagerOptimalCacheStatistics statistics = new EagerOptimalCacheStatistics(tuplesPerWindow[eId], time - window,
                 timestep, window);
         System.out.println(String.format("******* E%d Summary *******", eId));
         System.out.println(String.format("End of w%d", windowCounter));
         System.out.println(String.format("BW Cost of Batching: %d", uKeys));
         System.out.println(String.format("BW Cost of Streaming: %d", nArrivals));
-        System.out.println(String.format("Eager: BW Cost = %d, Estimated Cache Sizes: %s", eUpdatesPerWindow[eId],
-                Arrays.toString(eCacheSizes[eId].toArray())));
+        System.out.println(String.format("Eager: BW Cost: E2E: %d, Center: %d, Estimated Cache Sizes: %s",
+                eUpdatesPerWindow[eId], cUpdatesPerWindow[eId], Arrays.toString(eCacheSizes[eId].toArray())));
         System.out.println(String.format("Optimal: BW Cost = %d, Cache Sizes: %s", statistics.getTotalUpdates(),
                 Arrays.toString(statistics.getCacheSizes().toArray())));
         System.out.println("**************");
@@ -179,16 +232,47 @@ public class MultiEdgeExperiments {
         System.out.println(String.format("***** Summary of W%d *****", windowCounter));
         System.out.println(String.format("Total Keys: %d", totalKeys));
         System.out.println(String.format("Total Arrivals: %d", totalArrivals));
-        System.out.println(String.format("Total Updates: %d", totalUpdates));
+        System.out.println(String.format("Total Updates (e2e=%d + center=%d): %d", totalEdgeUpdates,
+                totalCenterUpdates, totalUpdates));
+        int e2eCost = DEFAULT_INTRA_PRICE * totalEdgeUpdates;
+        int centerCost = DEFAULT_INTER_PRICE * totalCenterUpdates;
+        System.out.println(String.format("Total Cost= %d, E2E(%d) + Center(%d)", e2eCost + centerCost, e2eCost,
+                centerCost));
     }
 
-    private static void processNextTimeStep(int eId, long time) {
-        long[] eUpdates = edges[eId].trigger(time, windowCounter * window, avgBw);
-        center.update(eId, eUpdates);
+    private static Map<Integer, List<Long>> processNextTimeStep(int eId, long time) {
+        long[] allUpdates = edges[eId].trigger(time, windowCounter * window, avgBw);
+
+        //Separate the updates that are toward the center from the updates toward the other edges.
+        // The updates for the edges will be processed in the next time step.
+        Map<Integer, List<Long>> updatesPerEdge = edges[eId].getKeyCoordinator(allUpdates);
+        long[] updatesToCenter;
+        if (updatesPerEdge.containsKey(eId)) {
+            updatesToCenter = convertToLongArray(updatesPerEdge.get(eId)); // the overhead for list to primitve
+            updatesPerEdge.remove(eId);
+        } else {
+            updatesToCenter = new long[0];
+        }
+        // array conversion
+        // will be fixed later. I'm not changing the types because of the later network-based implementation.
+        center.update(eId, updatesToCenter);
         final int eSize = edges[eId].getCacheManager().getCurrentCacheSize();
         eCacheSizes[eId].add(eSize);
-        eUpdateSize[eId].add(eUpdates.length);
-        eUpdatesPerWindow[eId] += eUpdates.length;
+//        eUpdateSize[eId].add(allUpdates.length);
+        cUpdatesPerWindow[eId] += updatesToCenter.length;
+//        cUpdateSize[eId].add(updatesToCenter.length);
+        //TODO add statistics for edge to edge communication
+
+        return updatesPerEdge;
+    }
+
+    private static long[] convertToLongArray(List<Long> list) {
+        long[] array = new long[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            array[i] = list.get(i);
+        }
+
+        return array;
     }
 
     private static void writeToFile(List<Long> triggerTimes, int window, List<Integer> cSizes, List<Integer> uSize,
@@ -204,12 +288,15 @@ public class MultiEdgeExperiments {
         totalArrivals = 0;
         totalKeys = 0;
         totalUpdates = 0;
+        totalCenterUpdates = 0;
+        totalEdgeUpdates = 0;
         triggerTimes.clear();
         for (int i = 0; i < numEdges; i++) {
             tuplesPerWindow[i].clear();
             eCacheSizes[i].clear();
-            eUpdateSize[i].clear();
+//            eUpdateSize[i].clear();
             eUpdatesPerWindow[i] = 0;
+            cUpdatesPerWindow[i] = 0;
             keysPerWindow[i].clear();
         }
     }

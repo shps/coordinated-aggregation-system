@@ -17,7 +17,7 @@ public class WorkloadMonitor {
     public final static float DEFAULT_BETA = 0.5f;
     private final Set<Long> registeredKeys = new HashSet<>();
     private final Set<Key> pendingForRegister = new HashSet<>();
-    private final Set<Key> pendingUnRegister = new HashSet<>();
+    private final Set<Long> pendingUnRegister = new HashSet<>();
     private final Map<Long, Key> arrivalsHistories = new HashMap<>();
     private final float[] weights;
     private int nArrivals = 0;
@@ -45,7 +45,7 @@ public class WorkloadMonitor {
         return pendingForRegister;
     }
 
-    public Set<Key> getPendingUnRegister() {
+    public Set<Long> getPendingUnRegister() {
         return pendingUnRegister;
     }
 
@@ -90,7 +90,7 @@ public class WorkloadMonitor {
     public void endOfWindow() {
         nArrivalsPrevWindow = getnArrivals();
         nArrivals = 0;
-        getPendingUnRegister().clear();
+        getPendingForRegister().clear();
         getPendingUnRegister().clear();
         for (Key k : getArrivalsHistories().values()) {
             // You can remove keys that has zero estimated arrival rates.
@@ -100,7 +100,7 @@ public class WorkloadMonitor {
                 registeredKeys.add(k.getId());
             } else if (k.getEstimatedArrivalRate() < registerThreshold && registeredKeys.contains(k.getId())) { //
                 // TODO put a percentage for threshold to avoid constant switching between register and unregister
-                getPendingUnRegister().add(k);
+                getPendingUnRegister().add(k.getId());
                 registeredKeys.remove(k.getId());
             }
         }

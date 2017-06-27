@@ -10,6 +10,7 @@ import java.util.Set;
  */
 public class Coordinator {
 
+    public final static int SELF = -1;
     private final int numEdges;
     private final HashMap<Long, int[]> keyEdgeArrivals = new HashMap<>();
     private final HashMap<Long, Integer> keyCoordinators = new HashMap<>();
@@ -94,8 +95,8 @@ public class Coordinator {
         for (long k : keysToUpdate) {
             int[] arrivalsPerEdge = keyEdgeArrivals.get(k);
             // Choose the edge with the minimum keys assigned before (load balancing)
-            int minCoordinator = -1;
-            int currentCoordinator = -1;
+            int minCoordinator = SELF;
+            int currentCoordinator = SELF;
             int minLoad = Integer.MAX_VALUE;
             if (keyCoordinators.containsKey(k)) {
                 minCoordinator = keyCoordinators.get(k);
@@ -104,20 +105,19 @@ public class Coordinator {
             }
             for (int i = 0; i < numEdges; i++) {
                 if (arrivalsPerEdge[i] > 0) {
-                    if ((edgeKeyCounters[i] < minLoad && currentCoordinator == -1) || (edgeKeyCounters[i] + 1 <
-                            minLoad && currentCoordinator != -1)) {
+                    if ((edgeKeyCounters[i] < minLoad && currentCoordinator == SELF) || (edgeKeyCounters[i] + 1 <
+                            minLoad && currentCoordinator != SELF)) {
                         minLoad = edgeKeyCounters[i];
                         minCoordinator = i;
                     }
                 }
             }
-            if (minCoordinator == -1 && minCoordinator != currentCoordinator) {
+            if (minCoordinator == SELF && minCoordinator != currentCoordinator) {
                 throw new Exception("Inconsistent state for the registered keys.");
             }
 
-            if (minCoordinator == -1)
-            {
-                keyEdgeMap.put(k, -1); // No coordinator can be assigned. Edges go for oblivious approach!
+            if (minCoordinator == SELF) {
+                keyEdgeMap.put(k, SELF); // No coordinator can be assigned. Edges go for oblivious approach!
                 // You can remove the key from the keyEdgeArrivals
             } else if (minCoordinator != currentCoordinator) {
                 if (keyCoordinators.containsKey(k)) {
