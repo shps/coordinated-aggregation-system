@@ -38,7 +38,8 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_INTRA_PRICE = 1;
     private final static Coordinator coordinator;
     private static int sanityCounter;
-    private static boolean sendFinalStepToEdge = false;
+    private static boolean sendFinalStepToEdge = true;
+    private static boolean enableEdgeToEdge = true;
 
     static {
         center = new KeyManager(numEdges);
@@ -64,7 +65,7 @@ public class MultiEdgeExperiments {
 //            eUpdateSize[i] = new LinkedList<>();
             CacheManager cache = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy
                     .LFU);
-            WorkloadMonitor monitor = new WorkloadMonitor();
+            WorkloadMonitor monitor = new WorkloadMonitor(enableEdgeToEdge);
             edges[i] = new Edge(i, cache, monitor);
             edgeToEdgeUpdates.put(i, new HashMap<>());
         }
