@@ -15,8 +15,11 @@ public class KeyManager {
     private final int[] keySimilarities;
     private int oCost;
     private int coCost;
+    private int e2eUpdates;
+    private int coCenterUpdates;
     private int interPrice = 2;
     private int intraPrice = 1;
+    private int obCenterUpdates;
 
     public KeyManager(int numEdges) {
         this.numEdges = numEdges;
@@ -45,14 +48,22 @@ public class KeyManager {
         Collection<Integer> occurrences = keyEdgeCount.values();
         for (int o : occurrences) {
             getKeySimilarities()[o - 1]++;
-            oCost += o * interPrice;
-            coCost += interPrice + ((o - 1) * intraPrice);
+//            oCost += o * interPrice;
+//            coCost += interPrice + ((o - 1) * intraPrice);
+            obCenterUpdates = getObCenterUpdates() + o;
+            coCenterUpdates = getCoCenterUpdates() + 1;
+            e2eUpdates = getE2eUpdates() + o - 1;
         }
+        oCost = getObCenterUpdates() * interPrice;
+        coCost = getCoCenterUpdates() * interPrice + getE2eUpdates() * intraPrice;
     }
 
     public void reset() {
         oCost = 0;
         coCost = 0;
+        e2eUpdates = 0;
+        coCenterUpdates = 0;
+        obCenterUpdates = 0;
         keyEdgeCount.clear();
         for (int i = 0; i < getNumEdges(); i++) {
             edgeKeys[i].clear();
@@ -95,5 +106,17 @@ public class KeyManager {
 
     public int getCostDifference() {
         return oCost - coCost;
+    }
+
+    public int getE2eUpdates() {
+        return e2eUpdates;
+    }
+
+    public int getCoCenterUpdates() {
+        return coCenterUpdates;
+    }
+
+    public int getObCenterUpdates() {
+        return obCenterUpdates;
     }
 }

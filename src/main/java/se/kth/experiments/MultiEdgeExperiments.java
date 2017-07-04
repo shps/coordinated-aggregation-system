@@ -22,7 +22,7 @@ public class MultiEdgeExperiments {
     static int window = 3600;
     static int windowCounter;
     private final static float alpha = 0.25f;
-    private final static float avgBw = 12;
+    private final static float avgBw = 35;
     private final static LinkedList<Tuple>[] tuplesPerWindow;
     private final static LinkedList<Long> triggerTimes;
     private static final HashSet<Long>[] keysPerWindow;
@@ -44,9 +44,9 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = false;
+    private static final boolean enableEdgeToEdge = true;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
-    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.EAGER;
+    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
             .LFU;
 
@@ -71,7 +71,8 @@ public class MultiEdgeExperiments {
             summaryPrinter.append("window-counter,w,edges,total-keys,total-arrivals,total-e-updates,total-c-updates," +
                     "total-updates, total-cost").append("\n");
             optimalPrinter = new PrintWriter(new FileOutputStream(new File(s2Builder.toString())));
-            optimalPrinter.append("window-counter,w,edges,oblibious,coordinated,gain").append("\n");
+            optimalPrinter.append("window-counter,w,edges,ob-center-updates,e2e-center-updates,e2e-updates,oblivious," +
+                    "coordinated,gain").append("\n");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
@@ -185,11 +186,13 @@ public class MultiEdgeExperiments {
         System.out.println(String.format("****** W%d ******", windowCounter));
         System.out.println(String.format("Key Similarities 1:%d: %s", numEdges, Arrays.toString(center
                 .getKeySimilarities())));
-        System.out.println(String.format("Oblivious Cost: %d, Coordinated Cost: %d, Cost Difference: %d, Saving: %f",
-                center.getoCost(), center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() /
-                        (float) center.getoCost())));
-        optimalPrinter.append(String.format("%d,%d,%d,%d,%d,%f", windowCounter, window, numEdges, center.getoCost(),
-                center.getCoCost(), 1.0 - ((float) center.getCoCost() / (float) center.getoCost()))).append("\n");
+        System.out.println(String.format("Oblivious Updates: %d, E2E Center Updates: %d, E2E Updates: %d, Oblivious " +
+                        "Cost: %d, Coordinated Cost: %d, Cost Difference: %d, Saving: %f",
+                center.getObCenterUpdates(), center.getCoCenterUpdates(), center.getE2eUpdates(), center.getoCost(),
+                center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() / (float) center.getoCost())));
+        optimalPrinter.append(String.format("%d,%d,%d,%d,%d,%d,%d,%d,%f", windowCounter, window, numEdges, center
+                .getObCenterUpdates(), center.getCoCenterUpdates(), center.getE2eUpdates(), center.getoCost(), center
+                .getCoCost(), 1.0 - ((float) center.getCoCost() / (float) center.getoCost()))).append("\n");
     }
 
     private static void streamNextTimeStep(int srcEdge, long time, LinkedList<Tuple>[] streams) {
