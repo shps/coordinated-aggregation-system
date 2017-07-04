@@ -5,6 +5,9 @@ import se.kth.edge.*;
 import se.kth.stream.StreamFileReader;
 import se.kth.stream.Tuple;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.util.*;
 
@@ -38,10 +41,33 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_INTRA_PRICE = 1;
     private final static Coordinator coordinator;
     private static int sanityCounter;
-    private static boolean sendFinalStepToEdge = true;
-    private static boolean enableEdgeToEdge = true;
+    private static boolean sendFinalStepToEdge = false;
+    private static boolean enableEdgeToEdge = false;
+    private static PrintWriter summaryPrinter;
+    private static PrintWriter optimalPrinter;
 
     static {
+        StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
+        StringBuilder s2Builder = new StringBuilder(String.format("%soptimal-w%d", inputFile, window));
+        if (enableEdgeToEdge) {
+            sBuilder.append("-e2e");
+            s2Builder.append("-e2e");
+        }
+        if (sendFinalStepToEdge) {
+            sBuilder.append("-withstep2e");
+            s2Builder.append("-e2e");
+        }
+        sBuilder.append(".txt");
+        s2Builder.append(".txt");
+        try {
+            summaryPrinter = new PrintWriter(new FileOutputStream(new File(sBuilder.toString())));
+            summaryPrinter.append("window-counter,w,edges,total-keys,total-arrivals,total-e-updates,total-c-updates," +
+                    "total-updates").append("\n");
+            optimalPrinter = new PrintWriter(new FileOutputStream(new File(s2Builder.toString())));
+            optimalPrinter.append("window-counter,w,edges,oblibious,coordinated,gain").append("\n");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
         center = new KeyManager(numEdges);
         center.setInterPrice(DEFAULT_INTER_PRICE);
         center.setIntraPrice(DEFAULT_INTRA_PRICE);
@@ -81,6 +107,11 @@ public class MultiEdgeExperiments {
         }
 
         timestepExecution(streams, timestep);
+
+        summaryPrinter.flush();
+        summaryPrinter.close();
+        optimalPrinter.flush();
+        optimalPrinter.close();
     }
 
     private static void timestepExecution(LinkedList<Tuple>[] streams, int timestep) throws Exception {
@@ -150,6 +181,8 @@ public class MultiEdgeExperiments {
         System.out.println(String.format("Oblivious Cost: %d, Coordinated Cost: %d, Cost Difference: %d, Saving: %f",
                 center.getoCost(), center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() /
                         (float) center.getoCost())));
+        optimalPrinter.append(String.format("%d,%d,%d,%d,%d,%f", windowCounter, window, numEdges, center.getoCost(),
+                center.getCoCost(), 1.0 - ((float) center.getCoCost() / (float) center.getoCost()))).append("\n");
     }
 
     private static void streamNextTimeStep(int srcEdge, long time, LinkedList<Tuple>[] streams) {
@@ -269,6 +302,8 @@ public class MultiEdgeExperiments {
     }
 
     private static void printMultiEdgeStatistics(int windowCounter) {
+        summaryPrinter.append(String.format("%d,%d,%d,%d,%d,%d,%d,%d", windowCounter, window, numEdges, totalKeys,
+                totalArrivals, totalEdgeUpdates, totalCenterUpdates, totalUpdates)).append("\n");
         System.out.println(String.format("***** Summary of W%d *****", windowCounter));
         System.out.println(String.format("Total Keys: %d", totalKeys));
         System.out.println(String.format("Total Arrivals: %d", totalArrivals));
