@@ -87,6 +87,69 @@ public class CacheManagerTest {
         entries = manager.trigger(14, 10, 0, nArrivals, arrivals);
         assert entries.length == 1;
         assert entries[0] == 0; // Eviction policy LRU
+        // Priority Test
+        manager.endOfWindow();
+        k1.nextWindow();
+        k2.nextWindow();
+        manager.insert(0, 1);
+        k1.increaseArrival();
+        manager.insert(0, 2);
+        k1.increaseArrival();
+        manager.insert(0, 3);
+        k1.increaseArrival();
+        manager.insert(1, 3);
+        k2.increaseArrival();
+        manager.insert(1, 4);
+        k2.increaseArrival();
+        nArrivals = 5;
+        entries = manager.trigger(4, 0, 0, nArrivals, arrivals);
+        assert entries.length == 2;
+        manager.endOfWindow();
+        manager.setSpecialPriority(true);
+        k1.nextWindow();
+        k2.nextWindow();
+        manager.insertPriorityKey(0, 11);
+        k1.increaseArrival();
+        manager.insertPriorityKey(0, 12);
+        k1.increaseArrival();
+        manager.insert(1, 13);
+        k2.increaseArrival();
+        nArrivals = 3;
+        entries = manager.trigger(14, 10, 0, nArrivals, arrivals);
+        assert entries.length == 1;
+        assert entries[0] == 1; // Eviction policy LRU
+
+        // Priority Disabled
+        manager.endOfWindow();
+        manager.setSpecialPriority(false);
+        k1.nextWindow();
+        k2.nextWindow();
+        manager.insert(0, 1);
+        k1.increaseArrival();
+        manager.insert(0, 2);
+        k1.increaseArrival();
+        manager.insert(0, 3);
+        k1.increaseArrival();
+        manager.insert(1, 3);
+        k2.increaseArrival();
+        manager.insert(1, 4);
+        k2.increaseArrival();
+        nArrivals = 5;
+        entries = manager.trigger(4, 0, 0, nArrivals, arrivals);
+        assert entries.length == 2;
+        manager.endOfWindow();
+        k1.nextWindow();
+        k2.nextWindow();
+        manager.insertPriorityKey(0, 11);
+        k1.increaseArrival();
+        manager.insertPriorityKey(0, 12);
+        k1.increaseArrival();
+        manager.insert(1, 13);
+        k2.increaseArrival();
+        nArrivals = 3;
+        entries = manager.trigger(14, 10, 0, nArrivals, arrivals);
+        assert entries.length == 1;
+        assert entries[0] == 0; // Eviction policy LRU
     }
 
     @Test

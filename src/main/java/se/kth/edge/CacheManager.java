@@ -14,6 +14,15 @@ public class CacheManager {
     private int w;
     private final SizePolicy sPolicy;
     public final static float DEFAULT_LAZINESS = 0.25f;
+    private boolean specialPriority = false; // Non-coordinated-Keys first
+
+    public boolean isSpecialPriority() {
+        return specialPriority;
+    }
+
+    public void setSpecialPriority(boolean specialPriority) {
+        this.specialPriority = specialPriority;
+    }
 
 
     // candidate.
@@ -59,6 +68,14 @@ public class CacheManager {
      * @param time
      */
     public void insert(long kid, long time) {
+        insertKey(kid, time, false);
+    }
+
+    public void insertPriorityKey(long kid, long time) {
+        insertKey(kid, time, true);
+    }
+
+    private void insertKey(long kid, long time, boolean specialPriority) {
         CacheEntry entry = null;
         if (cachedKeys.containsKey(kid)) {
             entry = cachedKeys.get(kid);
@@ -69,6 +86,7 @@ public class CacheManager {
             entry.numArrivals = 1;
             cachedKeys.put(kid, entry);
         }
+        entry.specialPriority = specialPriority;
         entry.lastUpdateTime = time;
         cache.add(entry);
         arrivedKeys.add(kid);
@@ -157,12 +175,18 @@ public class CacheManager {
     private class FrequentlyUsedComparator implements Comparator<CacheEntry> {
 
         public int compare(CacheEntry e1, CacheEntry e2) {
-            if (e1.numArrivals < e2.numArrivals) {
-                return -1;
-            }
+            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
+                if (e1.numArrivals < e2.numArrivals) {
+                    return -1;
+                }
 
-            if (e1.numArrivals > e2.numArrivals) {
+                if (e1.numArrivals > e2.numArrivals) {
+                    return 1;
+                }
+            } else if (e1.specialPriority) {
                 return 1;
+            } else if (e2.specialPriority) {
+                return -1;
             }
 
             return 0;
@@ -172,12 +196,18 @@ public class CacheManager {
     private class RecentlyUsedComparator implements Comparator<CacheEntry> {
 
         public int compare(CacheEntry e1, CacheEntry e2) {
-            if (e1.lastUpdateTime < e2.lastUpdateTime) {
-                return -1;
-            }
+            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
+                if (e1.lastUpdateTime < e2.lastUpdateTime) {
+                    return -1;
+                }
 
-            if (e1.lastUpdateTime > e2.lastUpdateTime) {
+                if (e1.lastUpdateTime > e2.lastUpdateTime) {
+                    return 1;
+                }
+            } else if (e1.specialPriority) {
                 return 1;
+            } else if (e2.specialPriority) {
+                return -1;
             }
 
             return 0;

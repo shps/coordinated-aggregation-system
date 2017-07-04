@@ -22,7 +22,7 @@ public class MultiEdgeExperiments {
     static int window = 3600;
     static int windowCounter;
     private final static float alpha = 0.25f;
-    private final static float avgBw = 1;
+    private final static float avgBw = 12;
     private final static LinkedList<Tuple>[] tuplesPerWindow;
     private final static LinkedList<Long> triggerTimes;
     private static final HashSet<Long>[] keysPerWindow;
@@ -41,10 +41,11 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_INTRA_PRICE = 1;
     private final static Coordinator coordinator;
     private static int sanityCounter;
-    private static boolean sendFinalStepToEdge = false;
-    private static boolean enableEdgeToEdge = false;
+    private static final boolean sendFinalStepToEdge = false;
+    private static final boolean enableEdgeToEdge = true;
     private static PrintWriter summaryPrinter;
     private static PrintWriter optimalPrinter;
+    private static final boolean priorityKeys = false;
 
     static {
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
@@ -56,6 +57,9 @@ public class MultiEdgeExperiments {
         if (sendFinalStepToEdge) {
             sBuilder.append("-withstep2e");
             s2Builder.append("-e2e");
+        }
+        if (priorityKeys) {
+            sBuilder.append("-priority");
         }
         sBuilder.append(".txt");
         s2Builder.append(".txt");
@@ -91,6 +95,7 @@ public class MultiEdgeExperiments {
 //            eUpdateSize[i] = new LinkedList<>();
             CacheManager cache = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy
                     .LFU);
+            cache.setSpecialPriority(priorityKeys);
             WorkloadMonitor monitor = new WorkloadMonitor(enableEdgeToEdge);
             edges[i] = new Edge(i, cache, monitor);
             edgeToEdgeUpdates.put(i, new HashMap<>());

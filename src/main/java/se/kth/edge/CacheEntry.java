@@ -8,9 +8,9 @@ public class CacheEntry {
     public final long key;
     public int numArrivals;
     public long lastUpdateTime;
+    public boolean specialPriority = false; // For the keys that the edge is its coordinator.
 
-    public CacheEntry(long key)
-    {
+    public CacheEntry(long key) {
         this.key = key;
     }
 
