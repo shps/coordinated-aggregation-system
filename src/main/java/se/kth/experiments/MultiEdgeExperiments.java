@@ -44,11 +44,14 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = true;
+    private static final boolean enableEdgeToEdge = false;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
     private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
             .LFU;
+    private static final int DEFAULT_HISTORY_SIZE = 1;
+    private static final float DEFAULT_BETA = 0.5f;
+    private static final int DEFAULT_REGISTER_THRESHOLD = WorkloadMonitor.DEFAULT_REGISTER_THRESHOLD;
 
     static {
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
@@ -99,7 +102,8 @@ public class MultiEdgeExperiments {
 //            eUpdateSize[i] = new LinkedList<>();
             CacheManager cache = new CacheManager(window, DEFAULT_SIZE_POLICY, DEFAULT_EVICTION_POLICY);
             cache.setSpecialPriority(priorityKeys);
-            WorkloadMonitor monitor = new WorkloadMonitor(enableEdgeToEdge);
+            WorkloadMonitor monitor = new WorkloadMonitor(DEFAULT_HISTORY_SIZE, DEFAULT_BETA,
+                    DEFAULT_REGISTER_THRESHOLD, enableEdgeToEdge);
             edges[i] = new Edge(i, cache, monitor);
             edgeToEdgeUpdates.put(i, new HashMap<>());
         }
@@ -189,7 +193,8 @@ public class MultiEdgeExperiments {
         System.out.println(String.format("Oblivious Updates: %d, E2E Center Updates: %d, E2E Updates: %d, Oblivious " +
                         "Cost: %d, Coordinated Cost: %d, Cost Difference: %d, Saving: %f",
                 center.getObCenterUpdates(), center.getCoCenterUpdates(), center.getE2eUpdates(), center.getoCost(),
-                center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() / (float) center.getoCost())));
+                center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() / (float) center
+                        .getoCost())));
         optimalPrinter.append(String.format("%d,%d,%d,%d,%d,%d,%d,%d,%f", windowCounter, window, numEdges, center
                 .getObCenterUpdates(), center.getCoCenterUpdates(), center.getE2eUpdates(), center.getoCost(), center
                 .getCoCost(), 1.0 - ((float) center.getCoCost() / (float) center.getoCost()))).append("\n");
