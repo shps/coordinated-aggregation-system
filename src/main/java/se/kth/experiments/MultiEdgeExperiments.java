@@ -18,7 +18,7 @@ public class MultiEdgeExperiments {
 
     static final Edge[] edges;
     static int numEdges = 4;
-    static int timestep = 200;
+    static int timestep = 25;
     static int window = 3600;
     static int windowCounter;
     private final static float alpha = 0.25f;
@@ -37,15 +37,18 @@ public class MultiEdgeExperiments {
     private static int totalEdgeUpdates;
     private static int totalArrivals;
     private static final KeyManager center;
-    private static final int DEFAULT_INTER_PRICE = 3;
-    private static final int DEFAULT_INTRA_PRICE = 1;
     private final static Coordinator coordinator;
     private static int sanityCounter;
-    private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = true;
     private static PrintWriter summaryPrinter;
     private static PrintWriter optimalPrinter;
-    private static final boolean priorityKeys = false;
+    private static final int DEFAULT_INTER_PRICE = 3;
+    private static final int DEFAULT_INTRA_PRICE = 1;
+    private static final boolean sendFinalStepToEdge = false;
+    private static final boolean enableEdgeToEdge = false;
+    private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
+    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.EAGER;
+    private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
+            .LFU;
 
     static {
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
@@ -66,7 +69,7 @@ public class MultiEdgeExperiments {
         try {
             summaryPrinter = new PrintWriter(new FileOutputStream(new File(sBuilder.toString())));
             summaryPrinter.append("window-counter,w,edges,total-keys,total-arrivals,total-e-updates,total-c-updates," +
-                    "total-updates").append("\n");
+                    "total-updates, total-cost").append("\n");
             optimalPrinter = new PrintWriter(new FileOutputStream(new File(s2Builder.toString())));
             optimalPrinter.append("window-counter,w,edges,oblibious,coordinated,gain").append("\n");
         } catch (FileNotFoundException e) {
@@ -93,8 +96,7 @@ public class MultiEdgeExperiments {
             keysPerWindow[i] = new HashSet<>();
             eCacheSizes[i] = new LinkedList<>();
 //            eUpdateSize[i] = new LinkedList<>();
-            CacheManager cache = new CacheManager(window, CacheManager.SizePolicy.EAGER, CacheManager.EvictionPolicy
-                    .LFU);
+            CacheManager cache = new CacheManager(window, DEFAULT_SIZE_POLICY, DEFAULT_EVICTION_POLICY);
             cache.setSpecialPriority(priorityKeys);
             WorkloadMonitor monitor = new WorkloadMonitor(enableEdgeToEdge);
             edges[i] = new Edge(i, cache, monitor);
@@ -307,16 +309,16 @@ public class MultiEdgeExperiments {
     }
 
     private static void printMultiEdgeStatistics(int windowCounter) {
-        summaryPrinter.append(String.format("%d,%d,%d,%d,%d,%d,%d,%d", windowCounter, window, numEdges, totalKeys,
-                totalArrivals, totalEdgeUpdates, totalCenterUpdates, totalUpdates)).append("\n");
+        int e2eCost = DEFAULT_INTRA_PRICE * totalEdgeUpdates;
+        int centerCost = DEFAULT_INTER_PRICE * totalCenterUpdates;
+        summaryPrinter.append(String.format("%d,%d,%d,%d,%d,%d,%d,%d, %d", windowCounter, window, numEdges, totalKeys,
+                totalArrivals, totalEdgeUpdates, totalCenterUpdates, totalUpdates, e2eCost + centerCost)).append("\n");
         System.out.println(String.format("***** Summary of W%d *****", windowCounter));
         System.out.println(String.format("Total Keys: %d", totalKeys));
         System.out.println(String.format("Total Arrivals: %d", totalArrivals));
         System.out.println(String.format("Total Updates (e2e=%d + center=%d): %d", totalEdgeUpdates,
                 totalCenterUpdates, totalUpdates));
         System.out.println(String.format("Total Updates Sanity Check: %d", sanityCounter));
-        int e2eCost = DEFAULT_INTRA_PRICE * totalEdgeUpdates;
-        int centerCost = DEFAULT_INTER_PRICE * totalCenterUpdates;
         System.out.println(String.format("Total Cost= %d, E2E(%d) + Center(%d)", e2eCost + centerCost, e2eCost,
                 centerCost));
     }
