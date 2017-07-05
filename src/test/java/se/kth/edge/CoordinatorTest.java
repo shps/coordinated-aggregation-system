@@ -5,8 +5,6 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
-
 /**
  * Created by Hooman on 2017-06-25.
  */
@@ -116,6 +114,38 @@ public class CoordinatorTest {
         removals.put(e2, new long[]{k1});
         keyEdgeMap = c.applyUpdates(new HashMap<>(), removals);
         assert keyEdgeMap.get(k1) == -1;
+
+
+        // MAX Arrival Strategy
+        c = new Coordinator(numEdges, Coordinator.SelectionStrategy.MAX_ARRIVAL);
+        k1Edges = new int[]{2, 0, 1};
+        k2Edges = new int[]{1, 0, 2};
+        newArrivals = new HashMap<>();
+        newArrivals.put(k1, k1Edges);
+        newArrivals.put(k2, k2Edges);
+        keyEdgeMap = c.applyUpdates(newArrivals, new HashMap<>());
+        c1 = 0;
+        c2 = 0;
+        c3 = 0;
+        for (int e : keyEdgeMap.values()) {
+            if (e == e1) {
+                c1++;
+            } else if (e == e2) {
+                c2++;
+            } else if (e == e3) {
+                c3++;
+            }
+        }
+        assert c1 == 1;
+        assert c2 == 0;
+        assert c3 == 1;
+        assert keyEdgeMap.get(k1) == e1;
+        assert keyEdgeMap.get(k2) == e3;
+        k1Edges = new int[]{0, 3, 0};
+        newArrivals = new HashMap<>();
+        newArrivals.put(k1, k1Edges);
+        keyEdgeMap = c.applyUpdates(newArrivals, new HashMap<>());
+        assert keyEdgeMap.get(k1) == e2;
     }
 
 }

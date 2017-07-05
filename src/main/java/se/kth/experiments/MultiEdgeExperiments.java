@@ -44,7 +44,7 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = false;
+    private static final boolean enableEdgeToEdge = true;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
     private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
@@ -52,6 +52,8 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_HISTORY_SIZE = 1;
     private static final float DEFAULT_BETA = 0.5f;
     private static final int DEFAULT_REGISTER_THRESHOLD = WorkloadMonitor.DEFAULT_REGISTER_THRESHOLD;
+    private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
+            .MIN_LOAD;
 
     static {
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
@@ -92,7 +94,7 @@ public class MultiEdgeExperiments {
         eUpdatesPerWindow = new int[numEdges];
         cUpdatesPerWindow = new int[numEdges];
         edges = new Edge[numEdges];
-        coordinator = new Coordinator(numEdges);
+        coordinator = new Coordinator(numEdges, DEFAULT_COORDINATOR_SELECTION);
         edgeToEdgeUpdates = new HashMap<>();
 
         for (int i = 0; i < numEdges; i++) {
