@@ -14,6 +14,9 @@ public class Edge {
     private final WorkloadMonitor wMonitor;
     private final CacheManager cache;
     private final Map<Long, Integer> coordinators = new HashMap<>();
+    private int coordinatorMessages;
+    private int longMessages;
+    private int intMessages;
 
     public Edge(int eId, CacheManager c, WorkloadMonitor m) {
         this.eId = eId;
@@ -64,12 +67,18 @@ public class Edge {
     }
 
     public void updateCoordinators(Map<Long, Integer> newCoordinators) {
+        coordinatorMessages++;
+        longMessages += newCoordinators.keySet().size();
+        intMessages += newCoordinators.values().size();
         this.getCoordinators().putAll(newCoordinators);
     }
 
     public long[] endOfWindow() throws Exception {
         long[] remainingKeys = cache.endOfWindow();
         wMonitor.endOfWindow();
+        coordinatorMessages = 0;
+        longMessages = 0;
+        intMessages = 0;
 
         return remainingKeys;
     }
@@ -88,5 +97,17 @@ public class Edge {
 
     public Map<Long, Integer> getCoordinators() {
         return coordinators;
+    }
+
+    public int getCoordinatorMessages() {
+        return coordinatorMessages;
+    }
+
+    public int getLongMessages() {
+        return longMessages;
+    }
+
+    public int getIntMessages() {
+        return intMessages;
     }
 }

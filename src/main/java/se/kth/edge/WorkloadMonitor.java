@@ -23,24 +23,30 @@ public class WorkloadMonitor {
     private int nArrivals = 0;
     private int nArrivalsPrevWindow = 0;
     private final boolean enableEdgeToEdge;
+    public static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.25f;
+    private final int unRegisterThreshold;
+    private final float unregisterPercentage;
 
     public WorkloadMonitor() {
-        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, true);
+        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, true);
     }
 
     public WorkloadMonitor(boolean edgeToEdge) {
-        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, edgeToEdge);
+        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, edgeToEdge);
     }
 
     public WorkloadMonitor(int historySize, float beta) {
-        this(historySize, beta, DEFAULT_REGISTER_THRESHOLD, true);
+        this(historySize, beta, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, true);
     }
 
-    public WorkloadMonitor(int historySize, float beta, int registerThreshold, boolean enableEdgeToEdge) {
+    public WorkloadMonitor(int historySize, float beta, int registerThreshold, float unregisterPercentage, boolean
+            enableEdgeToEdge) {
         this.enableEdgeToEdge = enableEdgeToEdge;
         this.beta = beta;
         weights = computeWeights(historySize, beta);
         this.registerThreshold = registerThreshold;
+        this.unregisterPercentage = unregisterPercentage;
+        this.unRegisterThreshold = Math.round(registerThreshold - registerThreshold * unregisterPercentage);
     }
 
     public float[] getWeights() {
@@ -105,7 +111,7 @@ public class WorkloadMonitor {
                 if (k.getEstimatedArrivalRate() >= registerThreshold && !registeredKeys.contains(k.getId())) {
                     getPendingForRegister().add(k);
                     registeredKeys.add(k.getId());
-                } else if (k.getEstimatedArrivalRate() < registerThreshold && registeredKeys.contains(k.getId())) { //
+                } else if (k.getEstimatedArrivalRate() < unRegisterThreshold && registeredKeys.contains(k.getId())) { //
                     // TODO put a percentage for threshold to avoid constant switching between register and unregister
                     getPendingUnRegister().add(k.getId());
                     registeredKeys.remove(k.getId());
@@ -116,5 +122,13 @@ public class WorkloadMonitor {
 
     public Map<Long, Key> getArrivalsHistories() {
         return arrivalsHistories;
+    }
+
+    public int getUnRegisterThreshold() {
+        return unRegisterThreshold;
+    }
+
+    public float getUnregisterPercentage() {
+        return unregisterPercentage;
     }
 }

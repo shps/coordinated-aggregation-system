@@ -17,12 +17,6 @@ import java.util.*;
 public class MultiEdgeExperiments {
 
     static final Edge[] edges;
-    static int numEdges = 4;
-    static int timestep = 25;
-    static int window = 3600;
-    static int windowCounter;
-    private final static float alpha = 0.25f;
-    private final static float avgBw = 35;
     private final static LinkedList<Tuple>[] tuplesPerWindow;
     private final static LinkedList<Long> triggerTimes;
     private static final HashSet<Long>[] keysPerWindow;
@@ -41,6 +35,14 @@ public class MultiEdgeExperiments {
     private static int sanityCounter;
     private static PrintWriter summaryPrinter;
     private static PrintWriter optimalPrinter;
+    private static PrintWriter edgePrinter;
+    private static int[] e2eCounter;
+    static int numEdges = 4;
+    static int timestep = 25;
+    static int window = 3600;
+    static int windowCounter;
+    private final static float alpha = 0.25f;
+    private final static float avgBw = 35;
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
@@ -51,30 +53,39 @@ public class MultiEdgeExperiments {
             .LFU;
     private static final int DEFAULT_HISTORY_SIZE = 1;
     private static final float DEFAULT_BETA = 0.5f;
-    private static final int DEFAULT_REGISTER_THRESHOLD = WorkloadMonitor.DEFAULT_REGISTER_THRESHOLD;
+    private static final int DEFAULT_REGISTER_THRESHOLD = 15;
+    private static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
     private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
-            .MIN_LOAD;
+            .MAX_ARRIVAL;
 
     static {
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
         StringBuilder s2Builder = new StringBuilder(String.format("%soptimal-w%d", inputFile, window));
+        StringBuilder s3Builder = new StringBuilder(String.format("%sedges-w%d", inputFile, window));
         if (enableEdgeToEdge) {
             sBuilder.append("-e2e");
             s2Builder.append("-e2e");
+            s3Builder.append("-e2e");
         }
         if (sendFinalStepToEdge) {
             sBuilder.append("-withstep2e");
-            s2Builder.append("-e2e");
+            s2Builder.append("-withstep2e");
+            s3Builder.append("-withstep2e");
         }
         if (priorityKeys) {
             sBuilder.append("-priority");
+            s3Builder.append("-priority");
         }
         sBuilder.append(".txt");
         s2Builder.append(".txt");
+        s3Builder.append(".txt");
         try {
             summaryPrinter = new PrintWriter(new FileOutputStream(new File(sBuilder.toString())));
             summaryPrinter.append("window-counter,w,edges,total-keys,total-arrivals,total-e-updates,total-c-updates," +
-                    "total-updates, total-cost").append("\n");
+                    "total-updates,total-cost,key-registers,key-removals,co-long-messages,co-int-messages," +
+                    "co-edge-updates,edge-long-messages,edge-int-messages").append("\n");
+            edgePrinter = new PrintWriter(new FileOutputStream(new File(s3Builder.toString())));
+            edgePrinter.append("window-counter,edge-id,key-coordination,e2e-updates").append("\n");
             optimalPrinter = new PrintWriter(new FileOutputStream(new File(s2Builder.toString())));
             optimalPrinter.append("window-counter,w,edges,ob-center-updates,e2e-center-updates,e2e-updates,oblivious," +
                     "coordinated,gain").append("\n");
@@ -105,9 +116,10 @@ public class MultiEdgeExperiments {
             CacheManager cache = new CacheManager(window, DEFAULT_SIZE_POLICY, DEFAULT_EVICTION_POLICY);
             cache.setSpecialPriority(priorityKeys);
             WorkloadMonitor monitor = new WorkloadMonitor(DEFAULT_HISTORY_SIZE, DEFAULT_BETA,
-                    DEFAULT_REGISTER_THRESHOLD, enableEdgeToEdge);
+                    DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, enableEdgeToEdge);
             edges[i] = new Edge(i, cache, monitor);
             edgeToEdgeUpdates.put(i, new HashMap<>());
+            e2eCounter = new int[numEdges];
         }
     }
 
@@ -126,6 +138,8 @@ public class MultiEdgeExperiments {
         summaryPrinter.close();
         optimalPrinter.flush();
         optimalPrinter.close();
+        edgePrinter.flush();
+        edgePrinter.close();
     }
 
     private static void timestepExecution(LinkedList<Tuple>[] streams, int timestep) throws Exception {
@@ -216,6 +230,7 @@ public class MultiEdgeExperiments {
         int e2eUpdates = 0;
         for (int dstEdge : edgeUpdates.keySet()) {
             long[] keys = convertToLongArray(edgeUpdates.get(dstEdge));
+            e2eCounter[dstEdge] += keys.length;
             for (long key : keys) {
                 Tuple t = new Tuple(key, time);
                 deliverTupleTo(srcEdge, dstEdge, t);
@@ -296,8 +311,12 @@ public class MultiEdgeExperiments {
             keysToUnregister[i] = k;
             i++;
         }
-        coordinator.registerKeys(edges[eId].getId(), keys, arrivals);
-        coordinator.unregisterKeys(edges[eId].getId(), keysToUnregister);
+        if (keys.length > 0) {
+            coordinator.registerKeys(edges[eId].getId(), keys, arrivals);
+        }
+        if (keysToUnregister.length > 0) {
+            coordinator.unregisterKeys(edges[eId].getId(), keysToUnregister);
+        }
 //        }
 
         // After all the edges report (Not necessary to wait for all the edges)
@@ -321,8 +340,19 @@ public class MultiEdgeExperiments {
     private static void printMultiEdgeStatistics(int windowCounter) {
         int e2eCost = DEFAULT_INTRA_PRICE * totalEdgeUpdates;
         int centerCost = DEFAULT_INTER_PRICE * totalCenterUpdates;
-        summaryPrinter.append(String.format("%d,%d,%d,%d,%d,%d,%d,%d, %d", windowCounter, window, numEdges, totalKeys,
-                totalArrivals, totalEdgeUpdates, totalCenterUpdates, totalUpdates, e2eCost + centerCost)).append("\n");
+        int totalCoUpdates = 0;
+        int totalLongMessages = 0;
+        int totalIntMessages = 0;
+        for (Edge e : edges) {
+            totalCoUpdates += e.getCoordinatorMessages();
+            totalLongMessages += e.getLongMessages();
+            totalIntMessages += e.getIntMessages();
+        }
+        summaryPrinter.append(String.format("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", windowCounter, window,
+                numEdges, totalKeys,
+                totalArrivals, totalEdgeUpdates, totalCenterUpdates, totalUpdates, e2eCost + centerCost,
+                coordinator.getRegCounter(), coordinator.getRemCounter(), coordinator.getLongMessages(), coordinator
+                        .getIntMessages(), totalCoUpdates, totalLongMessages, totalIntMessages)).append("\n");
         System.out.println(String.format("***** Summary of W%d *****", windowCounter));
         System.out.println(String.format("Total Keys: %d", totalKeys));
         System.out.println(String.format("Total Arrivals: %d", totalArrivals));
@@ -331,6 +361,14 @@ public class MultiEdgeExperiments {
         System.out.println(String.format("Total Updates Sanity Check: %d", sanityCounter));
         System.out.println(String.format("Total Cost= %d, E2E(%d) + Center(%d)", e2eCost + centerCost, e2eCost,
                 centerCost));
+        System.out.println(String.format("Edge Coordination Load: %s", Arrays.toString(coordinator.getEdgeKeyCounters
+                ())));
+        System.out.println(String.format("E2E Updates Load: %s", Arrays.toString(e2eCounter)));
+        int[] edgeCounters = coordinator.getEdgeKeyCounters();
+        for (int i = 0; i < numEdges; i++) {
+            edgePrinter.append(String.format("%d,%d,%d,%d\n", windowCounter, i, edgeCounters[i], e2eCounter[i]));
+        }
+
     }
 
     private static long[] convertToLongArray(List<Long> list) {
@@ -364,6 +402,7 @@ public class MultiEdgeExperiments {
 //            eUpdateSize[i].clear();
             eUpdatesPerWindow[i] = 0;
             cUpdatesPerWindow[i] = 0;
+            e2eCounter[i] = 0;
             keysPerWindow[i].clear();
         }
         edgeToEdgeUpdates.clear();

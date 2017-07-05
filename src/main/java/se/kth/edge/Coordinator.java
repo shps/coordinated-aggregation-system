@@ -19,14 +19,10 @@ public class Coordinator {
     private final HashMap<Integer, long[]> newKeyRemovals = new HashMap<>();
     private final SelectionStrategy selectionStrategy;
     public static final SelectionStrategy DEFAULT_SELECTION_STRATEGY = SelectionStrategy.MIN_LOAD;
-
-    public SelectionStrategy getSelectionStrategy() {
-        return selectionStrategy;
-    }
-
-    public enum SelectionStrategy {
-        MIN_LOAD, MAX_ARRIVAL
-    }
+    private int regCounter;
+    private int longMessages;
+    private int intMessages;
+    private int remCounter;
 
     public Coordinator(int numEdges) {
         this(numEdges, DEFAULT_SELECTION_STRATEGY);
@@ -39,6 +35,10 @@ public class Coordinator {
     }
 
     public void registerKeys(int edgeId, long[] keys, int[] arrivals) throws Exception {
+        regCounter++;
+        longMessages += keys.length;
+        intMessages += arrivals.length + 1;
+
         if (keys.length != arrivals.length) {
             throw new Exception("Number of keys does not match number of arrivals.");
         }
@@ -57,6 +57,10 @@ public class Coordinator {
     }
 
     public void unregisterKeys(int edgeId, long[] keys) {
+        remCounter++;
+        longMessages += keys.length;
+//        intMessages++; // Only count for register and not removal.
+
         getNewKeyRemovals().put(edgeId, keys);
     }
 
@@ -64,6 +68,10 @@ public class Coordinator {
         Map<Long, Integer> keyEdgeMap = applyUpdates(getNewKeyArrivals(), getNewKeyRemovals());
         getNewKeyArrivals().clear();
         getNewKeyRemovals().clear();
+        remCounter = 0;
+        regCounter = 0;
+        longMessages = 0;
+        intMessages = 0;
         return keyEdgeMap;
     }
 
@@ -211,5 +219,33 @@ public class Coordinator {
 
     public HashMap<Integer, long[]> getNewKeyRemovals() {
         return newKeyRemovals;
+    }
+
+    public SelectionStrategy getSelectionStrategy() {
+        return selectionStrategy;
+    }
+
+    public int getRegCounter() {
+        return regCounter;
+    }
+
+    public int getLongMessages() {
+        return longMessages;
+    }
+
+    public int getIntMessages() {
+        return intMessages;
+    }
+
+    public int getRemCounter() {
+        return remCounter;
+    }
+
+    public int[] getEdgeKeyCounters() {
+        return edgeKeyCounters;
+    }
+
+    public enum SelectionStrategy {
+        MIN_LOAD, MAX_ARRIVAL
     }
 }
