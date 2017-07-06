@@ -11,7 +11,7 @@ public class DataGenerator {
 
     public static void main(String[] args) throws IOException {
         int numEdges = 3;
-        int numKeys = 1000;
+        int numKeys = 10000;
         int window = 7200;
         int numWindow = 30;
         String outputFile = "/Users/ganymedian/Desktop/aggregation/";

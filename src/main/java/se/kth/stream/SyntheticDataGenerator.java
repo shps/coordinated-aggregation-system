@@ -1,9 +1,6 @@
 package se.kth.stream;
 
-import java.util.LinkedList;
-import java.util.PriorityQueue;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by Hooman on 2017-06-11.
@@ -13,25 +10,42 @@ public class SyntheticDataGenerator {
 
     public static LinkedList<Tuple> generateDataWithPoissonDistribution(int numWindows, int window, Set<KeyEntry>
             entries) {
-        PriorityQueue<Tuple>[] events = new PriorityQueue[entries.size()];
+//        PriorityQueue<Tuple>[] events = new PriorityQueue[entries.size()];
+        SortedMap<Integer, LinkedList<Tuple>> allTuples = new TreeMap<>();
         Random r = new Random();
-        int i = 0;
+//        int i = 0;
         for (KeyEntry entry : entries) {
-            events[i] = new PriorityQueue<>();
+//            events[i] = new PriorityQueue<>();
             int t = 0;
             for (int w = 0; w < numWindows; w++) {
                 int nextArrivalRate = Poisson.getPoisson(entry.arrivalRate);
                 for (int j = 0; j < nextArrivalRate; j++) {
                     int arrivalTime = t + r.nextInt(window); // Uniform random generator
                     Tuple nextTuple = new Tuple(entry.id, arrivalTime);
-                    events[i].add(nextTuple);
+//                    events[i].add(nextTuple);
+                    LinkedList<Tuple> tuples;
+                    if (!allTuples.containsKey(arrivalTime)) {
+                        tuples = new LinkedList<>();
+                        allTuples.put(arrivalTime, tuples);
+                    } else {
+                        tuples = allTuples.get(arrivalTime);
+                    }
+                    tuples.add(nextTuple);
                 }
                 t += window;
             }
-            i++;
+//            i++;
         }
 
-        return sortTuples(events);
+        return sortTuples(allTuples);
+    }
+
+    private static LinkedList<Tuple> sortTuples(SortedMap<Integer, LinkedList<Tuple>> allTuples) {
+        LinkedList<Tuple> sortedTuples = new LinkedList<>();
+        for (LinkedList<Tuple> tuples : allTuples.values()) {
+            sortedTuples.addAll(tuples);
+        }
+        return sortedTuples;
     }
 
     private static LinkedList<Tuple> sortTuples(PriorityQueue<Tuple>[] events) {
@@ -56,6 +70,7 @@ public class SyntheticDataGenerator {
 
         return tuples;
     }
+
 
 }
 
