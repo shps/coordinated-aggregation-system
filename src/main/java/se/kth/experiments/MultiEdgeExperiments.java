@@ -36,24 +36,25 @@ public class MultiEdgeExperiments {
     private static PrintWriter summaryPrinter;
     private static PrintWriter optimalPrinter;
     private static PrintWriter edgePrinter;
+    private static PrintWriter logger;
     private static int[] e2eCounter;
-    static int numEdges = 4;
+    static int numEdges = 3;
     static int timestep = 25;
     static int window = 3600;
     static int windowCounter;
-    private final static float alpha = 0.25f;
-    private final static float avgBw = 35;
+    private final static float laziness = 0.25f;
+    private final static float avgBw = 11.5f;
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = true;
+    private static final boolean enableEdgeToEdge = false;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
     private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
             .LFU;
     private static final int DEFAULT_HISTORY_SIZE = 1;
     private static final float DEFAULT_BETA = 0.5f;
-    private static final int DEFAULT_REGISTER_THRESHOLD = 15;
+    private static final int DEFAULT_REGISTER_THRESHOLD = 5;
     private static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
     private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
             .MAX_ARRIVAL;
@@ -62,9 +63,11 @@ public class MultiEdgeExperiments {
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
         StringBuilder s2Builder = new StringBuilder(String.format("%soptimal-w%d", inputFile, window));
         StringBuilder s3Builder = new StringBuilder(String.format("%sedges-w%d", inputFile, window));
+        StringBuilder s4Builder = new StringBuilder(String.format("%slog-w%d", inputFile, window));
         if (enableEdgeToEdge) {
             sBuilder.append("-e2e");
             s2Builder.append("-e2e");
+            s3Builder.append("-e2e");
             s3Builder.append("-e2e");
         }
         if (sendFinalStepToEdge) {
@@ -89,6 +92,7 @@ public class MultiEdgeExperiments {
             optimalPrinter = new PrintWriter(new FileOutputStream(new File(s2Builder.toString())));
             optimalPrinter.append("window-counter,w,edges,ob-center-updates,e2e-center-updates,e2e-updates,oblivious," +
                     "coordinated,gain").append("\n");
+            logger = new PrintWriter(new FileOutputStream(new File(s4Builder.toString())));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
@@ -113,7 +117,7 @@ public class MultiEdgeExperiments {
             keysPerWindow[i] = new HashSet<>();
             eCacheSizes[i] = new LinkedList<>();
 //            eUpdateSize[i] = new LinkedList<>();
-            CacheManager cache = new CacheManager(window, DEFAULT_SIZE_POLICY, DEFAULT_EVICTION_POLICY);
+            CacheManager cache = new CacheManager(window, DEFAULT_SIZE_POLICY, DEFAULT_EVICTION_POLICY, laziness);
             cache.setSpecialPriority(priorityKeys);
             WorkloadMonitor monitor = new WorkloadMonitor(DEFAULT_HISTORY_SIZE, DEFAULT_BETA,
                     DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, enableEdgeToEdge);
@@ -125,11 +129,15 @@ public class MultiEdgeExperiments {
 
     public static void main(String[] args) throws Exception {
 
+
+        printConfigurations();
         LinkedList<Tuple>[] streams = new LinkedList[numEdges];
         // load the streams from files
         for (int i = 0; i < numEdges; i++) {
             streams[i] = StreamFileReader.read(String.format("%s%d-stream.txt", inputFile, i));
-            System.out.println(String.format("Number of tuples: %d", streams[i].size()));
+            String s = String.format("Number of tuples: %d", streams[i].size());
+            System.out.println(s);
+            logger.println(s);
         }
 
         timestepExecution(streams, timestep);
@@ -140,6 +148,25 @@ public class MultiEdgeExperiments {
         optimalPrinter.close();
         edgePrinter.flush();
         edgePrinter.close();
+        logger.flush();
+        logger.close();
+    }
+
+    private static void printConfigurations() {
+
+        String s = String.format("numEdges:%d\ntimestep:%d\nwindow:%d\nlaziness:%f\navgBw:%f\nInterPrice:%d" +
+                        "\nIntraPrice:%d" +
+                        "\nsendFinalStepToEdge:%s\nenableEdgeToEdge:%s\npriorityKeys:%s\nDEFAULT_SIZE_POLICY:%s" +
+                        "\nDEFAULT_EVICTION_POLICY:%s\nDEFAULT_HISTORY_SIZE:%d\nDEFAULT_BETA:%f" +
+                        "\nDEFAULT_REGISTER_THRESHOLD" +
+                        ":%d\nDEFAULT_UNREGISTER_PERCENTAGE:%f\nDEFAULT_COORDINATOR_SELECTION:%s", numEdges, timestep,
+                window, laziness, avgBw, DEFAULT_INTER_PRICE, DEFAULT_INTRA_PRICE, String.valueOf
+                        (sendFinalStepToEdge), String.valueOf(enableEdgeToEdge), String.valueOf(priorityKeys),
+                DEFAULT_SIZE_POLICY.toString(), DEFAULT_EVICTION_POLICY.toString(), DEFAULT_HISTORY_SIZE,
+                DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE,
+                DEFAULT_COORDINATOR_SELECTION.toString());
+        System.out.println(s);
+        logger.println(s);
     }
 
     private static void timestepExecution(LinkedList<Tuple>[] streams, int timestep) throws Exception {
@@ -203,14 +230,20 @@ public class MultiEdgeExperiments {
     }
 
     private static void printCenterStatistics(KeyManager center, int windowCounter) {
-        System.out.println(String.format("****** W%d ******", windowCounter));
-        System.out.println(String.format("Key Similarities 1:%d: %s", numEdges, Arrays.toString(center
-                .getKeySimilarities())));
-        System.out.println(String.format("Oblivious Updates: %d, E2E Center Updates: %d, E2E Updates: %d, Oblivious " +
+        String s1 = String.format("****** W%d ******", windowCounter);
+        String s2 = String.format("Key Similarities 1:%d: %s", numEdges, Arrays.toString(center
+                .getKeySimilarities()));
+        String s3 = String.format("Oblivious Updates: %d, E2E Center Updates: %d, E2E Updates: %d, Oblivious " +
                         "Cost: %d, Coordinated Cost: %d, Cost Difference: %d, Saving: %f",
                 center.getObCenterUpdates(), center.getCoCenterUpdates(), center.getE2eUpdates(), center.getoCost(),
                 center.getCoCost(), center.getCostDifference(), 1.0 - ((float) center.getCoCost() / (float) center
-                        .getoCost())));
+                        .getoCost()));
+        System.out.println(s1);
+        System.out.println(s2);
+        System.out.println(s3);
+        logger.println(s1);
+        logger.println(s2);
+        logger.println(s3);
         optimalPrinter.append(String.format("%d,%d,%d,%d,%d,%d,%d,%d,%f", windowCounter, window, numEdges, center
                 .getObCenterUpdates(), center.getCoCenterUpdates(), center.getE2eUpdates(), center.getoCost(), center
                 .getCoCost(), 1.0 - ((float) center.getCoCost() / (float) center.getoCost()))).append("\n");
@@ -323,16 +356,30 @@ public class MultiEdgeExperiments {
 
         EagerOptimalCacheStatistics statistics = new EagerOptimalCacheStatistics(tuplesPerWindow[eId], time - window,
                 timestep, window);
-        System.out.println(String.format("******* E%d Summary *******", eId));
-        System.out.println(String.format("End of w%d", windowCounter));
-        System.out.println(String.format("BW Cost of Batching: %d", uKeys));
-        System.out.println(String.format("BW Cost of Streaming: %d", nArrivals));
-        System.out.println(String.format("Eager: BW Cost: E2E: %d, Center: %d, Estimated Cache Sizes: %s",
-                eUpdatesPerWindow[eId], cUpdatesPerWindow[eId], Arrays.toString(eCacheSizes[eId].toArray())));
-        System.out.println(String.format("Optimal: BW Cost = %d, Cache Sizes: %s", statistics.getTotalUpdates(),
-                Arrays.toString(statistics.getCacheSizes().toArray())));
-        System.out.println("**************");
-//        writeToFile(triggerTimes, windowCounter + 1, eCacheSizes[eId], eUpdateSize[eId], eWriter);
+        String s1 = String.format("******* E%d Summary *******", eId);
+        String s2 = String.format("End of w%d", windowCounter);
+        String s3 = String.format("BW Cost of Batching: %d", uKeys);
+        String s4 = String.format("BW Cost of Streaming: %d", nArrivals);
+        String s5 = String.format("Eager: BW Cost: E2E: %d, Center: %d, Estimated Cache Sizes: %s",
+                eUpdatesPerWindow[eId], cUpdatesPerWindow[eId], Arrays.toString(eCacheSizes[eId].toArray()));
+        String s6 = String.format("Optimal: BW Cost = %d, Cache Sizes: %s", statistics.getTotalUpdates(),
+                Arrays.toString(statistics.getCacheSizes().toArray()));
+        String s7 = "**************";
+        System.out.println(s1);
+        System.out.println(s2);
+        System.out.println(s3);
+        System.out.println(s4);
+        System.out.println(s5);
+        System.out.println(s6);
+        System.out.println(s7);
+        logger.println(s1);
+        logger.println(s2);
+        logger.println(s3);
+        logger.println(s4);
+        logger.println(s5);
+        logger.println(s6);
+        logger.println(s7);
+        //        writeToFile(triggerTimes, windowCounter + 1, eCacheSizes[eId], eUpdateSize[eId], eWriter);
 //        writeToFile(triggerTimes, windowCounter + 1, statistics.getCacheSizes(), statistics.getUpdateSizes(),
 // oWriter);
     }
@@ -353,17 +400,33 @@ public class MultiEdgeExperiments {
                 totalArrivals, totalEdgeUpdates, totalCenterUpdates, totalUpdates, e2eCost + centerCost,
                 coordinator.getRegCounter(), coordinator.getRemCounter(), coordinator.getLongMessages(), coordinator
                         .getIntMessages(), totalCoUpdates, totalLongMessages, totalIntMessages)).append("\n");
-        System.out.println(String.format("***** Summary of W%d *****", windowCounter));
-        System.out.println(String.format("Total Keys: %d", totalKeys));
-        System.out.println(String.format("Total Arrivals: %d", totalArrivals));
-        System.out.println(String.format("Total Updates (e2e=%d + center=%d): %d", totalEdgeUpdates,
-                totalCenterUpdates, totalUpdates));
-        System.out.println(String.format("Total Updates Sanity Check: %d", sanityCounter));
-        System.out.println(String.format("Total Cost= %d, E2E(%d) + Center(%d)", e2eCost + centerCost, e2eCost,
-                centerCost));
-        System.out.println(String.format("Edge Coordination Load: %s", Arrays.toString(coordinator.getEdgeKeyCounters
-                ())));
-        System.out.println(String.format("E2E Updates Load: %s", Arrays.toString(e2eCounter)));
+        String s1 = String.format("***** Summary of W%d *****", windowCounter);
+        String s2 = String.format("Total Keys: %d", totalKeys);
+        String s3 = String.format("Total Arrivals: %d", totalArrivals);
+        String s4 = String.format("Total Updates (e2e=%d + center=%d): %d", totalEdgeUpdates,
+                totalCenterUpdates, totalUpdates);
+        String s5 = String.format("Total Updates Sanity Check: %d", sanityCounter);
+        String s6 = String.format("Total Cost= %d, E2E(%d) + Center(%d)", e2eCost + centerCost, e2eCost,
+                centerCost);
+        String s7 = String.format("Edge Coordination Load: %s", Arrays.toString(coordinator.getEdgeKeyCounters
+                ()));
+        String s8 = String.format("E2E Updates Load: %s", Arrays.toString(e2eCounter));
+        System.out.println(s1);
+        System.out.println(s2);
+        System.out.println(s3);
+        System.out.println(s4);
+        System.out.println(s5);
+        System.out.println(s6);
+        System.out.println(s7);
+        System.out.println(s8);
+        logger.println(s1);
+        logger.println(s2);
+        logger.println(s3);
+        logger.println(s4);
+        logger.println(s5);
+        logger.println(s6);
+        logger.println(s7);
+        logger.println(s8);
         int[] edgeCounters = coordinator.getEdgeKeyCounters();
         for (int i = 0; i < numEdges; i++) {
             edgePrinter.append(String.format("%d,%d,%d,%d\n", windowCounter, i, edgeCounters[i], e2eCounter[i]));

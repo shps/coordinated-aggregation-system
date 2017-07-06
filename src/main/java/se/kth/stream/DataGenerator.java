@@ -10,13 +10,13 @@ import java.util.Set;
 public class DataGenerator {
 
     public static void main(String[] args) throws IOException {
-        int numEdges = 4;
+        int numEdges = 3;
         int numKeys = 1000;
-        int window = 3600;
-        int numWindow = 20;
+        int window = 7200;
+        int numWindow = 30;
         String outputFile = "/Users/ganymedian/Desktop/aggregation/";
         SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
-                .ASCENDING_EXP);
+                .UNIFORM);
         Set<KeyEntry>[] keys = builder.buildKeys();
 
         for (int i = 0; i < numEdges; i++) {
