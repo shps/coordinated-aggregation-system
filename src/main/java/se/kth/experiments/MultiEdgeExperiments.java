@@ -82,6 +82,7 @@ public class MultiEdgeExperiments {
         sBuilder.append(".csv");
         s2Builder.append(".csv");
         s3Builder.append(".txt");
+        s4Builder.append(".txt");
         try {
             summaryPrinter = new PrintWriter(new FileOutputStream(new File(sBuilder.toString())));
             summaryPrinter.append("window-counter,w,edges,total-keys,total-arrivals,total-e-updates,total-c-updates," +
