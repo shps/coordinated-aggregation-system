@@ -76,11 +76,14 @@ public class Edge {
     public long[] endOfWindow() throws Exception {
         long[] remainingKeys = cache.endOfWindow();
         wMonitor.endOfWindow();
+
+        return remainingKeys;
+    }
+
+    public void resetStatistics() {
         coordinatorMessages = 0;
         longMessages = 0;
         intMessages = 0;
-
-        return remainingKeys;
     }
 
     public WorkloadMonitor getWorkloadManager() {

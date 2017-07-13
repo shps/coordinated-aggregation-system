@@ -68,11 +68,14 @@ public class Coordinator {
         Map<Long, Integer> keyEdgeMap = applyUpdates(getNewKeyArrivals(), getNewKeyRemovals());
         getNewKeyArrivals().clear();
         getNewKeyRemovals().clear();
+        return keyEdgeMap;
+    }
+
+    public void resetStatistics() {
         remCounter = 0;
         regCounter = 0;
         longMessages = 0;
         intMessages = 0;
-        return keyEdgeMap;
     }
 
     public Map<Long, Integer> applyUpdates(HashMap<Long, int[]> newKeyArrivals, HashMap<Integer, long[]>

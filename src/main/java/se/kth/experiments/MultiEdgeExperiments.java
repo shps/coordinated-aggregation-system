@@ -47,7 +47,7 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = false;
+    private static final boolean enableEdgeToEdge = true;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
     private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
@@ -81,7 +81,7 @@ public class MultiEdgeExperiments {
         }
         sBuilder.append(".csv");
         s2Builder.append(".csv");
-        s3Builder.append(".txt");
+        s3Builder.append(".csv");
         s4Builder.append(".txt");
         try {
             summaryPrinter = new PrintWriter(new FileOutputStream(new File(sBuilder.toString())));
@@ -198,14 +198,14 @@ public class MultiEdgeExperiments {
                     if (streams[i].isEmpty())
                         emptyStream = true;
                 }
-                printMultiEdgeStatistics(windowCounter);
-                center.onWindowEnd();
-                printCenterStatistics(center, windowCounter);
                 Map<Long, Integer> newCoordinators = coordinator.computeNewCoordinators();
                 // Report updated coordinators for keys to all edges (This can be asynchronous)
                 for (Edge e : edges) {
                     e.updateCoordinators(newCoordinators);
                 }
+                printMultiEdgeStatistics(windowCounter);
+                center.onWindowEnd();
+                printCenterStatistics(center, windowCounter);
                 windowCounter++;
                 if (emptyStream) {
                     break;
@@ -454,6 +454,7 @@ public class MultiEdgeExperiments {
 
     private static void resetOnWindowStart() throws Exception {
         center.reset();
+        coordinator.resetStatistics();
         totalArrivals = 0;
         totalKeys = 0;
         totalUpdates = 0;
@@ -468,6 +469,7 @@ public class MultiEdgeExperiments {
             cUpdatesPerWindow[i] = 0;
             e2eCounter[i] = 0;
             keysPerWindow[i].clear();
+            edges[i].resetStatistics();
         }
         edgeToEdgeUpdates.clear();
         sanityCounter = 0;
