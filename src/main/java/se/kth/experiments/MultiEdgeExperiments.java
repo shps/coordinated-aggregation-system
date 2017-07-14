@@ -47,9 +47,9 @@ public class MultiEdgeExperiments {
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = true;
+    private static final boolean enableEdgeToEdge = false;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
-    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
+    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.EAGER;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
             .LFU;
     private static final int DEFAULT_HISTORY_SIZE = 1;

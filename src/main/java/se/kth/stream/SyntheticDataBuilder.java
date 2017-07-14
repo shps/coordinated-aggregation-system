@@ -15,7 +15,7 @@ public class SyntheticDataBuilder {
     private final KDistribution dist;
 
     public enum KDistribution {
-        UNIFORM, ASCENDING_EXP, DESENDING_EXP
+        UNIFORM, ASCENDING_EXP, DESENDING_EXP, ALL_SIMILAR, NO_SIMILAR
     }
 
     public SyntheticDataBuilder(int numEdgeDataCenters, int numKeys, KDistribution dist) {
@@ -48,9 +48,19 @@ public class SyntheticDataBuilder {
             float prev = 0;
             for (int i = 1; i <= numEdgeDataCenters; i++) {
                 float curr = i * i;
-                kDistributions[i-1] = (curr - prev) / max;
+                kDistributions[i - 1] = (curr - prev) / max;
                 prev = curr;
             }
+        } else if (dist == KDistribution.ALL_SIMILAR) {
+            for (int i = 0; i < kDistributions.length - 1; i++) {
+                kDistributions[i] = 0;
+            }
+            kDistributions[kDistributions.length - 1] = 1;
+        } else if (dist == KDistribution.NO_SIMILAR) {
+            for (int i = 1; i < kDistributions.length; i++) {
+                kDistributions[i] = 0;
+            }
+            kDistributions[0] = 1;
         }
     }
 
