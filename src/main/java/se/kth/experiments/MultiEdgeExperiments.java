@@ -39,7 +39,7 @@ public class MultiEdgeExperiments {
     private static PrintWriter edgePrinter;
     private static PrintWriter logger;
     private static int[] e2eCounter;
-    static int numEdges = 6;
+    static int numEdges = 1;
     static int timestep = 25;
     static int window = 3600;
     static int windowCounter;
@@ -53,8 +53,8 @@ public class MultiEdgeExperiments {
     private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.EAGER;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
             .LFU;
-    private static final int DEFAULT_HISTORY_SIZE = 1;
-    private static final float DEFAULT_BETA = 0.1f;
+    private static final int DEFAULT_HISTORY_SIZE = 5;
+    private static final float DEFAULT_BETA = 0.8f;
     private static final int DEFAULT_REGISTER_THRESHOLD = 5;
     private static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
     private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
@@ -139,7 +139,7 @@ public class MultiEdgeExperiments {
         LinkedList<Tuple>[] streams = new LinkedList[numEdges];
         // load the streams from files
         for (int i = 0; i < numEdges; i++) {
-            streams[i] = StreamFileReader.read(String.format("%s%d-stream.txt", inputFile, i));
+            streams[i] = StreamFileReader.read(String.format("%s%d-stream.csv", inputFile, i));
             String s = String.format("Number of tuples: %d", streams[i].size());
             System.out.println(s);
             logger.println(s);

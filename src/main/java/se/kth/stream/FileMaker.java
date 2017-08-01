@@ -9,7 +9,7 @@ import java.util.Set;
  */
 public class FileMaker {
 
-    private static final String OUTPUT_DELIMITER = "\t";
+    private static final String OUTPUT_DELIMITER = ",";
 
     /**
      * @param outputFile

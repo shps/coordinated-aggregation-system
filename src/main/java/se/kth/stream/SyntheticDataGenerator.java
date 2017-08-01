@@ -81,7 +81,7 @@ public class SyntheticDataGenerator {
             while (t < time) {
                 double nextEventTime = -Math.log(1.0 - r.nextDouble()) / arrivalRate;
                 t = (int) (t + Math.round(nextEventTime));
-                System.out.println(String.format("NExt Event Time: %d, Time: %d", entry.arrivalRate, t));
+//                System.out.println(String.format("NExt Event Time: %d, Time: %d", entry.arrivalRate, t));
                 Tuple nextTuple = new Tuple(entry.id, t);
                 LinkedList<Tuple> tuples;
                 if (!allTuples.containsKey(t)) {

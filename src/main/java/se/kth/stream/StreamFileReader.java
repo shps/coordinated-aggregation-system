@@ -8,7 +8,7 @@ import java.util.LinkedList;
  */
 public class StreamFileReader {
 
-    private final static String DEFAULT_DELIMITER = "\t";
+    private final static String DEFAULT_DELIMITER = ",";
 
     /**
      *

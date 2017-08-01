@@ -10,10 +10,10 @@ import java.util.Set;
 public class DataGenerator {
 
     public static void main(String[] args) throws IOException {
-        int numEdges = 6;
-        int numKeys = 1000;
+        int numEdges = 1;
+        int numKeys = 5;
         int window = 3600;
-        int numWindow = 30;
+        int numWindow = 20;
         String outputFile = "/Users/ganymedian/Desktop/aggregation/";
         SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
                 .ASCENDING_EXP);
@@ -33,11 +33,11 @@ public class DataGenerator {
      */
     public static void generateData(Set<KeyEntry> entries, int numWindows, int window, String outputFile) throws
             IOException {
-        FileMaker.writeKeyArrivals(String.format("%s-keys.txt", outputFile), entries);
+        FileMaker.writeKeyArrivals(String.format("%s-keys.csv", outputFile), entries);
 //        LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithPoissonDistribution(numWindows, window,
 //                entries);
         LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithFixedEventTime(numWindows * window, window,
                 entries);
-        FileMaker.writeToFile(String.format("%s-stream.txt", outputFile), tuples);
+        FileMaker.writeToFile(String.format("%s-stream.csv", outputFile), tuples);
     }
 }
