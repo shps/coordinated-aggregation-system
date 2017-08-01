@@ -89,7 +89,7 @@ public class SyntheticDataBuilder {
                 int id = kid + j;
                 for (int e : edges) { // assign keys to the selected edges
                     // TODO add noise and make it independent from the window size.
-                    int arrivalRate = uniformRandom.nextInt(maxArrivalRate);
+                    int arrivalRate = 1 + uniformRandom.nextInt(maxArrivalRate);
                     KeyEntry k = new KeyEntry();
                     k.id = id;
                     k.arrivalRate = arrivalRate;

@@ -26,6 +26,11 @@ public class WorkloadMonitor {
     public static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.25f;
     private final int unRegisterThreshold;
     private final float unregisterPercentage;
+    private final WeightType weightType = WeightType.FADING;
+
+    public enum WeightType {
+        FADING, AVERAGE
+    }
 
     public WorkloadMonitor() {
         this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, true);
@@ -43,7 +48,11 @@ public class WorkloadMonitor {
             enableEdgeToEdge) {
         this.enableEdgeToEdge = enableEdgeToEdge;
         this.beta = beta;
-        weights = computeWeights(historySize, beta);
+        if (weightType == WeightType.FADING) {
+            weights = computeFadingWeights(historySize, beta);
+        } else {
+            weights = computeAverageWeight(historySize);
+        }
         this.registerThreshold = registerThreshold;
         this.unregisterPercentage = unregisterPercentage;
         this.unRegisterThreshold = Math.round(registerThreshold - registerThreshold * unregisterPercentage);
@@ -62,7 +71,7 @@ public class WorkloadMonitor {
     }
 
 
-    private float[] computeWeights(int historySize, float beta) {
+    private float[] computeFadingWeights(int historySize, float beta) {
         float[] weights = new float[historySize];
         int size = weights.length;
         float[] wPrime = new float[size];
@@ -74,6 +83,17 @@ public class WorkloadMonitor {
 
         for (int i = 0; i < size; i++) {
             weights[i] = wPrime[i] / sum;
+        }
+
+        return weights;
+    }
+
+    private float[] computeAverageWeight(int historySize) {
+        float[] weights = new float[historySize];
+        float weight = (float) 1 / (float) historySize;
+
+        for (int i = 0; i < weights.length; i++) {
+            weights[i] = weight;
         }
 
         return weights;

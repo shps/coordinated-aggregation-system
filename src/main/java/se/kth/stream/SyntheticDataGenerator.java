@@ -71,6 +71,32 @@ public class SyntheticDataGenerator {
         return tuples;
     }
 
+    public static LinkedList<Tuple> generateDataWithFixedEventTime(int time, int window, Set<KeyEntry>
+            entries) {
+        SortedMap<Integer, LinkedList<Tuple>> allTuples = new TreeMap<>();
+        Random r = new Random();
+        for (KeyEntry entry : entries) {
+            int t = 0;
+            double arrivalRate = (double)entry.arrivalRate / (double)window;
+            while (t < time) {
+                double nextEventTime = -Math.log(1.0 - r.nextDouble()) / arrivalRate;
+                t = (int) (t + Math.round(nextEventTime));
+                System.out.println(String.format("NExt Event Time: %d, Time: %d", entry.arrivalRate, t));
+                Tuple nextTuple = new Tuple(entry.id, t);
+                LinkedList<Tuple> tuples;
+                if (!allTuples.containsKey(t)) {
+                    tuples = new LinkedList<>();
+                    allTuples.put(t, tuples);
+                } else {
+                    tuples = allTuples.get(t);
+                }
+                tuples.add(nextTuple);
+            }
+        }
+
+        return sortTuples(allTuples);
+    }
+
 
 }
 

@@ -12,7 +12,7 @@ public class DataGenerator {
     public static void main(String[] args) throws IOException {
         int numEdges = 6;
         int numKeys = 1000;
-        int window = 7200;
+        int window = 3600;
         int numWindow = 30;
         String outputFile = "/Users/ganymedian/Desktop/aggregation/";
         SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
@@ -34,7 +34,9 @@ public class DataGenerator {
     public static void generateData(Set<KeyEntry> entries, int numWindows, int window, String outputFile) throws
             IOException {
         FileMaker.writeKeyArrivals(String.format("%s-keys.txt", outputFile), entries);
-        LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithPoissonDistribution(numWindows, window,
+//        LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithPoissonDistribution(numWindows, window,
+//                entries);
+        LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithFixedEventTime(numWindows * window, window,
                 entries);
         FileMaker.writeToFile(String.format("%s-stream.txt", outputFile), tuples);
     }
