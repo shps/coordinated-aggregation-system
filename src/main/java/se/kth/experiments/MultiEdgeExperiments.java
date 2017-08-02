@@ -60,6 +60,8 @@ public class MultiEdgeExperiments {
     private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
             .MAX_ARRIVAL;
     private static final WorkloadMonitor.WeightType DEFAULT_WEIGHT_TYPE = WorkloadMonitor.WeightType.FADING;
+    private static final boolean SINGLE_AGGREGATION_POINT = true;
+    private static final int DEFAULT_AGGREGATION_POINT = 0;
 
     static {
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
@@ -167,12 +169,13 @@ public class MultiEdgeExperiments {
                         "\nsendFinalStepToEdge:%s\nenableEdgeToEdge:%s\npriorityKeys:%s\nDEFAULT_SIZE_POLICY:%s" +
                         "\nDEFAULT_EVICTION_POLICY:%s\nDEFAULT_HISTORY_SIZE:%d\nDEFAULT_BETA:%f" +
                         "\nDEFAULT_REGISTER_THRESHOLD" +
-                        ":%d\nDEFAULT_UNREGISTER_PERCENTAGE:%f\nDEFAULT_COORDINATOR_SELECTION:%s", numEdges, timestep,
+                        ":%d\nDEFAULT_UNREGISTER_PERCENTAGE:%f\nDEFAULT_COORDINATOR_SELECTION:%s" +
+                        "\nSINGLE_AGGREGATION_POINT:%s", numEdges, timestep,
                 window, laziness, avgBw, DEFAULT_INTER_PRICE, DEFAULT_INTRA_PRICE, String.valueOf
                         (sendFinalStepToEdge), String.valueOf(enableEdgeToEdge), String.valueOf(priorityKeys),
                 DEFAULT_SIZE_POLICY.toString(), DEFAULT_EVICTION_POLICY.toString(), DEFAULT_HISTORY_SIZE,
                 DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE,
-                DEFAULT_COORDINATOR_SELECTION.toString());
+                DEFAULT_COORDINATOR_SELECTION.toString(), String.valueOf(SINGLE_AGGREGATION_POINT));
         System.out.println(s);
         logger.println(s);
     }
@@ -296,7 +299,17 @@ public class MultiEdgeExperiments {
         if (time % window != 0 || sendFinalStepToEdge) {
             //Separate the updates that are toward the center from the updates toward the other edges.
             // The updates for the edges will be processed in the next time step.
-            updatesPerEdge = edges[eId].getKeyCoordinator(allUpdates);
+            if (!SINGLE_AGGREGATION_POINT) {
+                updatesPerEdge = edges[eId].getKeyCoordinator(allUpdates);
+            } else {
+                updatesPerEdge = new HashMap<>();
+                List<Long> edgeKeys = new LinkedList();
+                for (long k : allUpdates) {
+                    edgeKeys.add(k);
+                }
+                updatesPerEdge.put(DEFAULT_AGGREGATION_POINT, edgeKeys);
+            }
+
             if (updatesPerEdge.containsKey(eId)) {
                 updatesToCenter = convertToLongArray(updatesPerEdge.get(eId)); // the overhead for list to primitve
                 updatesPerEdge.remove(eId);
