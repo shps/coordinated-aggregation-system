@@ -39,26 +39,27 @@ public class MultiEdgeExperiments {
     private static PrintWriter edgePrinter;
     private static PrintWriter logger;
     private static int[] e2eCounter;
-    static int numEdges = 1;
+    static int numEdges = 3;
     static int timestep = 25;
     static int window = 3600;
     static int windowCounter;
-    private final static float laziness = 0.25f;
-    private final static float avgBw = 12.5f;
+    private final static float laziness = 0.15f;
+    private final static float avgBw = 80f;
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = false;
+    private static final boolean enableEdgeToEdge = true;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
-    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.EAGER;
+    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
             .LFU;
     private static final int DEFAULT_HISTORY_SIZE = 5;
-    private static final float DEFAULT_BETA = 0.8f;
+    private static final float DEFAULT_BETA = 0.9f;
     private static final int DEFAULT_REGISTER_THRESHOLD = 5;
     private static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
     private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
             .MAX_ARRIVAL;
+    private static final WorkloadMonitor.WeightType DEFAULT_WEIGHT_TYPE = WorkloadMonitor.WeightType.FADING;
 
     static {
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
@@ -125,7 +126,7 @@ public class MultiEdgeExperiments {
             CacheManager cache = new CacheManager(window, DEFAULT_SIZE_POLICY, DEFAULT_EVICTION_POLICY, laziness);
             cache.setSpecialPriority(priorityKeys);
             WorkloadMonitor monitor = new WorkloadMonitor(DEFAULT_HISTORY_SIZE, DEFAULT_BETA,
-                    DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, enableEdgeToEdge);
+                    DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, enableEdgeToEdge, DEFAULT_WEIGHT_TYPE);
             edges[i] = new Edge(i, cache, monitor);
             edgeToEdgeUpdates.put(i, new HashMap<>());
             e2eCounter = new int[numEdges];

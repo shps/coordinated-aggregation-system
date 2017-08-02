@@ -17,7 +17,7 @@ public class KeyManager {
     private int coCost;
     private int e2eUpdates;
     private int coCenterUpdates;
-    private int interPrice = 2;
+    private int interPrice = 3;
     private int intraPrice = 1;
     private int obCenterUpdates;
 

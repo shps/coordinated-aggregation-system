@@ -12,6 +12,7 @@ public class WorkloadMonitor {
 
     public final static int DEFAULT_HISTORY_SIZE = 1;
     public final static int DEFAULT_REGISTER_THRESHOLD = 5; // the arrival rate threshold for becoming a coordinator
+    public final static WeightType DEFAULT_WEIGHT_TYPE = WeightType.FADING;
     private final int registerThreshold;
     private final float beta;
     public final static float DEFAULT_BETA = 0.5f;
@@ -26,36 +27,39 @@ public class WorkloadMonitor {
     public static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.25f;
     private final int unRegisterThreshold;
     private final float unregisterPercentage;
-    private final WeightType weightType = WeightType.FADING;
+    private final WeightType weightType;
 
     public enum WeightType {
         FADING, AVERAGE
     }
 
     public WorkloadMonitor() {
-        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, true);
+        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, true,
+                DEFAULT_WEIGHT_TYPE);
     }
 
     public WorkloadMonitor(boolean edgeToEdge) {
-        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, edgeToEdge);
+        this(DEFAULT_HISTORY_SIZE, DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE,
+                edgeToEdge, DEFAULT_WEIGHT_TYPE);
     }
 
     public WorkloadMonitor(int historySize, float beta) {
-        this(historySize, beta, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, true);
+        this(historySize, beta, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE, true, DEFAULT_WEIGHT_TYPE);
     }
 
     public WorkloadMonitor(int historySize, float beta, int registerThreshold, float unregisterPercentage, boolean
-            enableEdgeToEdge) {
+            enableEdgeToEdge, WeightType wType) {
         this.enableEdgeToEdge = enableEdgeToEdge;
         this.beta = beta;
+        this.weightType = wType;
+        this.registerThreshold = registerThreshold;
+        this.unregisterPercentage = unregisterPercentage;
+        this.unRegisterThreshold = Math.round(registerThreshold - registerThreshold * unregisterPercentage);
         if (weightType == WeightType.FADING) {
             weights = computeFadingWeights(historySize, beta);
         } else {
             weights = computeAverageWeight(historySize);
         }
-        this.registerThreshold = registerThreshold;
-        this.unregisterPercentage = unregisterPercentage;
-        this.unRegisterThreshold = Math.round(registerThreshold - registerThreshold * unregisterPercentage);
     }
 
     public float[] getWeights() {
