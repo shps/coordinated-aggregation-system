@@ -1,5 +1,7 @@
 package se.kth.stream;
 
+import se.kth.stream.uservisits.UserVisitsFileReader;
+
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Set;
@@ -10,17 +12,26 @@ import java.util.Set;
 public class DataGenerator {
 
     public static void main(String[] args) throws IOException {
-        int numEdges = 3;
-        int numKeys = 10000;
+        int numEdges = 6;
+        int numKeys = 1000;
         int window = 7200;
         int numWindow = 20;
         String outputFile = "/Users/ganymedian/Desktop/aggregation/";
-        SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder.KDistribution
-                .UNIFORM);
-        Set<KeyEntry>[] keys = builder.buildKeys();
+        boolean userVisit = true;
+        if (!userVisit) {
+            SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder
+                    .KDistribution
 
-        for (int i = 0; i < numEdges; i++) {
-            generateData(keys[i], numWindow, window, String.format("%s%d", outputFile, i));
+                    .ALL_SIMILAR);
+            Set<KeyEntry>[] keys = builder.buildKeys();
+
+            for (int i = 0; i < numEdges; i++) {
+                generateData(keys[i], numWindow, window, String.format("%s%d", outputFile, i));
+            }
+        } else {
+            for (int i = 0; i < numEdges; i++) {
+                generateUserVisitPerEdge(i, String.format("%s%d", outputFile, i));
+            }
         }
     }
 
@@ -39,5 +50,14 @@ public class DataGenerator {
         LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithFixedEventTime(numWindows * window, window,
                 entries);
         FileMaker.writeToFile(String.format("%s-stream.csv", outputFile), tuples);
+    }
+
+    public static void generateUserVisitPerEdge(int eId, String outputFile) throws IOException {
+        String file = "/Users/Ganymedian/Desktop/uservisits/part-0000";
+        LinkedList<Tuple> visits = new LinkedList<>();
+        for (int i = eId; i < eId + 1; i++)
+            visits.addAll(UserVisitsFileReader.readTuple(String.format("%s%d", file, i)));
+
+        FileMaker.writeToFile(String.format("%s-stream.csv", outputFile), visits);
     }
 }
