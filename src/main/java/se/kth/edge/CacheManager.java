@@ -125,11 +125,13 @@ public class CacheManager {
             int evictionSize = cache.size() - size;
             long[] evictedEntries = new long[evictionSize];
             for (int i = 0; i < evictionSize; i++) {
-                long key = cache.poll().key;
+                CacheEntry c = cache.poll();
+                long key = c.key;
                 evictedEntries[i] = key;
                 arrivedKeys.remove(key);
                 cachedKeys.remove(key);
             }
+
             return evictedEntries;
         }
 
@@ -195,19 +197,19 @@ public class CacheManager {
     private class FrequentlyUsedComparator implements Comparator<CacheEntry> {
 
         public int compare(CacheEntry e1, CacheEntry e2) {
-            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
-                if (e1.numArrivals < e2.numArrivals) {
-                    return -1;
-                }
-
-                if (e1.numArrivals > e2.numArrivals) {
-                    return 1;
-                }
-            } else if (e1.specialPriority) {
-                return 1;
-            } else if (e2.specialPriority) {
+//            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
+            if (e1.numArrivals < e2.numArrivals) {
                 return -1;
             }
+
+            if (e1.numArrivals > e2.numArrivals) {
+                return 1;
+            }
+//            } else if (e1.specialPriority) {
+//                return 1;
+//            } else if (e2.specialPriority) {
+//                return -1;
+//            }
 
             return 0;
         }
@@ -216,19 +218,19 @@ public class CacheManager {
     private class RecentlyUsedComparator implements Comparator<CacheEntry> {
 
         public int compare(CacheEntry e1, CacheEntry e2) {
-            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
-                if (e1.lastUpdateTime < e2.lastUpdateTime) {
-                    return -1;
-                }
-
-                if (e1.lastUpdateTime > e2.lastUpdateTime) {
-                    return 1;
-                }
-            } else if (e1.specialPriority) {
-                return 1;
-            } else if (e2.specialPriority) {
+//            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
+            if (e1.lastUpdateTime < e2.lastUpdateTime) {
                 return -1;
             }
+
+            if (e1.lastUpdateTime > e2.lastUpdateTime) {
+                return 1;
+            }
+//            } else if (e1.specialPriority) {
+//                return 1;
+//            } else if (e2.specialPriority) {
+//                return -1;
+//            }
 
             return 0;
         }
@@ -237,19 +239,19 @@ public class CacheManager {
     private class ArrivalRateComparator implements Comparator<CacheEntry> {
 
         public int compare(CacheEntry e1, CacheEntry e2) {
-            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
-                if (e1.estimatedRate < e2.estimatedRate) {
-                    return -1;
-                }
-
-                if (e1.estimatedRate > e2.estimatedRate) {
-                    return 1;
-                }
-            } else if (e1.specialPriority) {
-                return 1;
-            } else if (e2.specialPriority) {
+//            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
+            if (e1.estimatedRate < e2.estimatedRate) {
                 return -1;
             }
+
+            if (e1.estimatedRate > e2.estimatedRate) {
+                return 1;
+            }
+//            } else if (e1.specialPriority) {
+//                return 1;
+//            } else if (e2.specialPriority) {
+//                return -1;
+//            }
 
             return 0;
         }

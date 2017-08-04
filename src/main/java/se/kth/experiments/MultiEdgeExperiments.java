@@ -39,11 +39,11 @@ public class MultiEdgeExperiments {
     private static PrintWriter edgePrinter;
     private static PrintWriter logger;
     private static int[] e2eCounter;
-    static int numEdges = 6;
-    static int timestep = 25;
-    static int window = 450;
+    static int numEdges = 1;
+    static int timestep = 900;
+    static int window = 9000;
     static int windowCounter;
-    private static final int windowsToRun = 50;
+    private static final int windowsToRun = 30;
     private final static float laziness = 0.15f;
     private final static float avgBw = 7f;
     private static final int DEFAULT_INTER_PRICE = 3;
@@ -52,12 +52,12 @@ public class MultiEdgeExperiments {
     private static final boolean enableEdgeToEdge = false;
     private static final boolean SINGLE_AGGREGATION_POINT = false;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
-    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
+    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.EAGER;
     private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
             .LFU;
     private static final int DEFAULT_HISTORY_SIZE = 1;
     private static final float DEFAULT_BETA = 0.9f;
-    private static final int DEFAULT_REGISTER_THRESHOLD = 3;
+    private static final int DEFAULT_REGISTER_THRESHOLD = 5;
     private static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
     private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
             .MAX_ARRIVAL;
