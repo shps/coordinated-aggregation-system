@@ -41,14 +41,15 @@ public class MultiEdgeExperiments {
     private static int[] e2eCounter;
     static int numEdges = 6;
     static int timestep = 25;
-    static int window = 3600;
+    static int window = 450;
     static int windowCounter;
+    private static final int windowsToRun = 50;
     private final static float laziness = 0.15f;
-    private final static float avgBw = 15f;
+    private final static float avgBw = 7f;
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = true;
+    private static final boolean enableEdgeToEdge = false;
     private static final boolean SINGLE_AGGREGATION_POINT = false;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
     private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
@@ -56,7 +57,7 @@ public class MultiEdgeExperiments {
             .LFU;
     private static final int DEFAULT_HISTORY_SIZE = 1;
     private static final float DEFAULT_BETA = 0.9f;
-    private static final int DEFAULT_REGISTER_THRESHOLD = 5;
+    private static final int DEFAULT_REGISTER_THRESHOLD = 3;
     private static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
     private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
             .MAX_ARRIVAL;
@@ -187,7 +188,7 @@ public class MultiEdgeExperiments {
         long time = 0;
         boolean windowStarts = true;
 
-        while (true) {
+        while (true && windowCounter < windowsToRun) {
             if (windowStarts) {
                 resetOnWindowStart();
                 windowStarts = false;
@@ -338,6 +339,18 @@ public class MultiEdgeExperiments {
         // TODO for now we ignore edge to edge communication of the last time step.
         int uKeys = keysPerWindow[eId].size();
         totalKeys += uKeys;
+
+        //log arrivals
+        for (int j = 0; j < edges.length; j++) {
+            Map<Long, Key> arrivalHistories = edges[j].getWorkloadManager().getArrivalsHistories();
+            for (Key k : arrivalHistories.values()) {
+                String record = String.format("%d,%d,%d,%d,%d", j, windowCounter, k.getId(), k
+                        .getEstimatedArrivalRate(), k
+                        .getCurrentArrival());
+                arrivalPrinter.append(record).append("\n");
+            }
+        }
+
         long[] finalUpdates = edges[eId].endOfWindow();
         sanityCounter += finalUpdates.length;
         cUpdatesPerWindow[eId] += finalUpdates.length;
@@ -400,15 +413,6 @@ public class MultiEdgeExperiments {
         logger.println(s5);
         logger.println(s6);
         logger.println(s7);
-        for (int j = 0; j < edges.length; j++) {
-            Map<Long, Key> arrivalHistories = edges[j].getWorkloadManager().getArrivalsHistories();
-            for (Key k : arrivalHistories.values()) {
-                String record = String.format("%d,%d,%d,%d,%d", j, windowCounter, k.getId(), k
-                        .getEstimatedArrivalRate(), k
-                        .getCurrentArrival());
-                arrivalPrinter.append(record).append("\n");
-            }
-        }
         //        writeToFile(triggerTimes, windowCounter + 1, eCacheSizes[eId], eUpdateSize[eId], eWriter);
 //        writeToFile(triggerTimes, windowCounter + 1, statistics.getCacheSizes(), statistics.getUpdateSizes(),
 // oWriter);

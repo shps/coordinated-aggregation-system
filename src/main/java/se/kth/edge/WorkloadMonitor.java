@@ -148,6 +148,15 @@ public class WorkloadMonitor {
         return arrivalsHistories;
     }
 
+    public int getExpectedKeyArrivalRate(long kid) {
+        int rate = 0;
+        if (arrivalsHistories.containsKey(kid)) {
+            rate = arrivalsHistories.get(kid).getEstimatedArrivalRate();
+        }
+
+        return rate;
+    }
+
     public int getUnRegisterThreshold() {
         return unRegisterThreshold;
     }

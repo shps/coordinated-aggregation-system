@@ -35,7 +35,8 @@ public class Edge {
         if (coordinators.containsKey(kid) && coordinators.get(kid) == eId) {
             cache.insertPriorityKey(kid, time); // prioritize keys that the edge is its coordinator.
         } else {
-            cache.insert(kid, time);
+            int estimatedRate = wMonitor.getExpectedKeyArrivalRate(kid);
+            cache.insert(kid, time, estimatedRate);
         }
         wMonitor.addKeyArrival(kid, time);
     }

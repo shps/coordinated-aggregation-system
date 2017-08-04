@@ -28,7 +28,12 @@ public class CacheManager {
     // candidate.
 
     public enum EvictionPolicy {
-        LRU, LFU
+        LRU,
+        LFU,
+        /**
+         * Least Expected Arrival Rate
+         */
+        LEAR,
     }
 
     public enum SizePolicy {
@@ -55,8 +60,10 @@ public class CacheManager {
 
         if (e == EvictionPolicy.LRU) {
             cache = new PriorityQueue<>(new RecentlyUsedComparator());
-        } else {
+        } else if (e == EvictionPolicy.LFU) {
             cache = new PriorityQueue<>(new FrequentlyUsedComparator());
+        } else {
+            cache = new PriorityQueue<>(new ArrivalRateComparator());
         }
         this.sPolicy = s;
         this.w = window;
@@ -67,15 +74,27 @@ public class CacheManager {
      * @param kid
      * @param time
      */
+    public void insert(long kid, long time, int estimatedRate) {
+        insertKey(kid, time, false, estimatedRate);
+    }
+
+    /**
+     * @param kid
+     * @param time
+     */
     public void insert(long kid, long time) {
-        insertKey(kid, time, false);
+        insertKey(kid, time, false, 0);
+    }
+
+    public void insertPriorityKey(long kid, long time, int estimatedRate) {
+        insertKey(kid, time, true, estimatedRate);
     }
 
     public void insertPriorityKey(long kid, long time) {
-        insertKey(kid, time, true);
+        insertKey(kid, time, true, 0);
     }
 
-    private void insertKey(long kid, long time, boolean specialPriority) {
+    private void insertKey(long kid, long time, boolean specialPriority, int estimatedRate) {
         CacheEntry entry = null;
         if (cachedKeys.containsKey(kid)) {
             entry = cachedKeys.get(kid);
@@ -86,6 +105,7 @@ public class CacheManager {
             entry.numArrivals = 1;
             cachedKeys.put(kid, entry);
         }
+        entry.estimatedRate = estimatedRate;
         entry.specialPriority = specialPriority;
         entry.lastUpdateTime = time;
         cache.add(entry);
@@ -202,6 +222,27 @@ public class CacheManager {
                 }
 
                 if (e1.lastUpdateTime > e2.lastUpdateTime) {
+                    return 1;
+                }
+            } else if (e1.specialPriority) {
+                return 1;
+            } else if (e2.specialPriority) {
+                return -1;
+            }
+
+            return 0;
+        }
+    }
+
+    private class ArrivalRateComparator implements Comparator<CacheEntry> {
+
+        public int compare(CacheEntry e1, CacheEntry e2) {
+            if (!isSpecialPriority() || (e1.specialPriority && e2.specialPriority)) {
+                if (e1.estimatedRate < e2.estimatedRate) {
+                    return -1;
+                }
+
+                if (e1.estimatedRate > e2.estimatedRate) {
                     return 1;
                 }
             } else if (e1.specialPriority) {
