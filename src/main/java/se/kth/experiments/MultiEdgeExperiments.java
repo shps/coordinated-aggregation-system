@@ -72,16 +72,16 @@ public class MultiEdgeExperiments {
         numEdges = 6;
         timestep = 25;
         window = 900;
-        windowsToRun = 20;
+        windowsToRun = 25;
         enableEdgeToEdge = true;
         SINGLE_AGGREGATION_POINT = false;
         DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy.LEAR;
-        DEFAULT_HISTORY_SIZE = 5;
-        DEFAULT_BETA = 0.5f;
+        DEFAULT_HISTORY_SIZE = 10;
+        DEFAULT_BETA = 0.1f;
         DEFAULT_REGISTER_THRESHOLD = 3;
         DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
         DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy.MAX_ARRIVAL;
-        DEFAULT_WEIGHT_TYPE = WorkloadMonitor.WeightType.AVERAGE;
+        DEFAULT_WEIGHT_TYPE = WorkloadMonitor.WeightType.FADING;
 
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
         StringBuilder s2Builder = new StringBuilder(String.format("%soptimal-w%d", inputFile, window));

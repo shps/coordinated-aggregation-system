@@ -17,16 +17,17 @@ public class DataGenerator {
         int window = 7200;
         int numWindow = 20;
         String outputFile = "/Users/ganymedian/Desktop/aggregation/";
-        boolean userVisit = true;
+        boolean userVisit = false;
+        boolean fluctuateRates = true;
         if (!userVisit) {
             SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder
                     .KDistribution
 
-                    .ALL_SIMILAR);
+                    .ASCENDING_EXP);
             Set<KeyEntry>[] keys = builder.buildKeys();
 
             for (int i = 0; i < numEdges; i++) {
-                generateData(keys[i], numWindow, window, String.format("%s%d", outputFile, i));
+                generateData(keys[i], numWindow, window, String.format("%s%d", outputFile, i), fluctuateRates);
             }
         } else {
             for (int i = 0; i < numEdges; i++) {
@@ -42,13 +43,14 @@ public class DataGenerator {
      * @param outputFile
      * @throws IOException
      */
-    public static void generateData(Set<KeyEntry> entries, int numWindows, int window, String outputFile) throws
+    public static void generateData(Set<KeyEntry> entries, int numWindows, int window, String outputFile, boolean
+            fluctuateRates) throws
             IOException {
         FileMaker.writeKeyArrivals(String.format("%s-keys.csv", outputFile), entries);
 //        LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithPoissonDistribution(numWindows, window,
 //                entries);
         LinkedList<Tuple> tuples = SyntheticDataGenerator.generateDataWithFixedEventTime(numWindows * window, window,
-                entries);
+                entries, fluctuateRates);
         FileMaker.writeToFile(String.format("%s-stream.csv", outputFile), tuples);
     }
 
