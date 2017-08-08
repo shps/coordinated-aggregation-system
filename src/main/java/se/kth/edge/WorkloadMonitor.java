@@ -148,8 +148,8 @@ public class WorkloadMonitor {
         return arrivalsHistories;
     }
 
-    public int getExpectedKeyArrivalRate(long kid) {
-        int rate = 0;
+    public float getExpectedKeyArrivalRate(long kid) {
+        float rate = 0;
         if (arrivalsHistories.containsKey(kid)) {
             rate = arrivalsHistories.get(kid).getEstimatedArrivalRate();
         }

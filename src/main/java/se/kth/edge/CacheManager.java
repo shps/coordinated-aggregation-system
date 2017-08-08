@@ -74,7 +74,7 @@ public class CacheManager {
      * @param kid
      * @param time
      */
-    public void insert(long kid, long time, int estimatedRate) {
+    public void insert(long kid, long time, float estimatedRate) {
         insertKey(kid, time, false, estimatedRate);
     }
 
@@ -86,7 +86,7 @@ public class CacheManager {
         insertKey(kid, time, false, 0);
     }
 
-    public void insertPriorityKey(long kid, long time, int estimatedRate) {
+    public void insertPriorityKey(long kid, long time, float estimatedRate) {
         insertKey(kid, time, true, estimatedRate);
     }
 
@@ -94,7 +94,7 @@ public class CacheManager {
         insertKey(kid, time, true, 0);
     }
 
-    private void insertKey(long kid, long time, boolean specialPriority, int estimatedRate) {
+    private void insertKey(long kid, long time, boolean specialPriority, float estimatedRate) {
         CacheEntry entry = null;
         if (cachedKeys.containsKey(kid)) {
             entry = cachedKeys.get(kid);

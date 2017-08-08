@@ -33,7 +33,7 @@ public class CacheSizePolicies {
         double pSum = 0;
 
         for (long k : arrivedKeys) {
-            int arrivalRate = arrivalsPerKey.get(k).getEstimatedArrivalRate();
+            float arrivalRate = arrivalsPerKey.get(k).getEstimatedArrivalRate();
             if (arrivalRate > 0) {
                 pSum += arrivalProbability(tBar, arrivalRate);
             }
@@ -42,7 +42,7 @@ public class CacheSizePolicies {
         return (int) Math.round(pSum);
     }
 
-    public static double arrivalProbability(double tBar, int arrivalRate) {
+    public static double arrivalProbability(double tBar, float arrivalRate) {
         return 1 - Math.pow(tBar, arrivalRate) - Math.pow(1 - tBar, arrivalRate);
     }
 

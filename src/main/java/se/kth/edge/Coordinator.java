@@ -12,10 +12,10 @@ public class Coordinator {
 
     public final static int SELF = -1;
     private final int numEdges;
-    private final HashMap<Long, int[]> keyEdgeArrivals = new HashMap<>();
+    private final HashMap<Long, float[]> keyEdgeArrivals = new HashMap<>();
     private final HashMap<Long, Integer> keyCoordinators = new HashMap<>();
     private final int[] edgeKeyCounters;
-    private final HashMap<Long, int[]> newKeyArrivals = new HashMap<>();
+    private final HashMap<Long, float[]> newKeyArrivals = new HashMap<>();
     private final HashMap<Integer, long[]> newKeyRemovals = new HashMap<>();
     private final SelectionStrategy selectionStrategy;
     public static final SelectionStrategy DEFAULT_SELECTION_STRATEGY = SelectionStrategy.MIN_LOAD;
@@ -34,7 +34,7 @@ public class Coordinator {
         this.selectionStrategy = ss;
     }
 
-    public void registerKeys(int edgeId, long[] keys, int[] arrivals) throws Exception {
+    public void registerKeys(int edgeId, long[] keys, float[] arrivals) throws Exception {
         regCounter++;
         longMessages += keys.length;
         intMessages += arrivals.length + 1;
@@ -43,12 +43,12 @@ public class Coordinator {
             throw new Exception("Number of keys does not match number of arrivals.");
         }
         for (int i = 0; i < keys.length; i++) {
-            int[] arrivalsPerEdge;
+            float[] arrivalsPerEdge;
             long k = keys[i];
             if (getNewKeyArrivals().containsKey(k)) {
                 arrivalsPerEdge = getNewKeyArrivals().get(k);
             } else {
-                arrivalsPerEdge = new int[numEdges];
+                arrivalsPerEdge = new float[numEdges];
                 getNewKeyArrivals().put(k, arrivalsPerEdge);
             }
 
@@ -78,14 +78,14 @@ public class Coordinator {
         intMessages = 0;
     }
 
-    public Map<Long, Integer> applyUpdates(HashMap<Long, int[]> newKeyArrivals, HashMap<Integer, long[]>
+    public Map<Long, Integer> applyUpdates(HashMap<Long, float[]> newKeyArrivals, HashMap<Integer, long[]>
             newKeyRemovals) throws Exception {
         Set<Long> keysToUpdate = new HashSet<>();
 
         for (int e : newKeyRemovals.keySet()) {
             long[] keys = newKeyRemovals.get(e);
             for (long k : keys) {
-                int[] edges = keyEdgeArrivals.get(k);
+                float[] edges = keyEdgeArrivals.get(k);
                 if (edges == null || edges[e] == 0)
                     throw new Exception("Inconsistent state for the registered keys.");
                 edges[e] = 0;
@@ -99,10 +99,10 @@ public class Coordinator {
 
         for (long k : newKeyArrivals.keySet()) {
             keysToUpdate.add(k);
-            int[] newArrivalsPerEdge = newKeyArrivals.get(k);
-            int[] currentArrivalsPerEdge = keyEdgeArrivals.get(k);
+            float[] newArrivalsPerEdge = newKeyArrivals.get(k);
+            float[] currentArrivalsPerEdge = keyEdgeArrivals.get(k);
             if (currentArrivalsPerEdge == null) {
-                currentArrivalsPerEdge = new int[numEdges];
+                currentArrivalsPerEdge = new float[numEdges];
                 keyEdgeArrivals.put(k, currentArrivalsPerEdge);
             }
             for (int i = 0; i < numEdges; i++) {
@@ -130,10 +130,10 @@ public class Coordinator {
     private Map<Long, Integer> assignCoordinatorsWithMaxArrival(Set<Long> keysToUpdate) throws Exception {
         Map<Long, Integer> keyEdgeMap = new HashMap<>();
         for (long k : keysToUpdate) {
-            int[] arrivalsPerEdge = keyEdgeArrivals.get(k);
+            float[] arrivalsPerEdge = keyEdgeArrivals.get(k);
             int maxCoordinator = SELF;
             int currentCoordinator = SELF;
-            int maxArrival = Integer.MIN_VALUE;
+            float maxArrival = Float.MIN_VALUE;
             if (keyCoordinators.containsKey(k)) {
                 maxCoordinator = keyCoordinators.get(k);
                 currentCoordinator = maxCoordinator;
@@ -171,7 +171,7 @@ public class Coordinator {
     private Map<Long, Integer> assignCoordinatorsWithMinLoad(Set<Long> keysToUpdate) throws Exception {
         Map<Long, Integer> keyEdgeMap = new HashMap<>();
         for (long k : keysToUpdate) {
-            int[] arrivalsPerEdge = keyEdgeArrivals.get(k);
+            float[] arrivalsPerEdge = keyEdgeArrivals.get(k);
             // Choose the edge with the minimum keys assigned before (load balancing)
             int minCoordinator = SELF;
             int currentCoordinator = SELF;
@@ -216,7 +216,7 @@ public class Coordinator {
         return numEdges;
     }
 
-    public HashMap<Long, int[]> getNewKeyArrivals() {
+    public HashMap<Long, float[]> getNewKeyArrivals() {
         return newKeyArrivals;
     }
 

@@ -38,38 +38,57 @@ public class MultiEdgeExperiments {
     private static PrintWriter optimalPrinter;
     private static PrintWriter edgePrinter;
     private static PrintWriter logger;
+    private static PrintWriter uPrinter;
     private static int[] e2eCounter;
-    static int numEdges = 1;
-    static int timestep = 900;
-    static int window = 9000;
+    static int numEdges;
+    static int timestep;
+    static int window;
     static int windowCounter;
-    private static final int windowsToRun = 30;
-    private final static float laziness = 0.15f;
-    private final static float avgBw = 7f;
+    private static final int windowsToRun;
+    private static final boolean enableEdgeToEdge;
+    private static final boolean SINGLE_AGGREGATION_POINT;
+    private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY;
+    private static final int DEFAULT_HISTORY_SIZE;
+    private static final int DEFAULT_REGISTER_THRESHOLD;
+    private static final float DEFAULT_UNREGISTER_PERCENTAGE;
+    private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION;
+    private static final WorkloadMonitor.WeightType DEFAULT_WEIGHT_TYPE;
+    private static final int DEFAULT_AGGREGATION_POINT = 0;
+
+    private static final float DEFAULT_BETA;
+    private final static float laziness;
+    private final static float avgBw;
     private static final int DEFAULT_INTER_PRICE = 3;
     private static final int DEFAULT_INTRA_PRICE = 1;
     private static final boolean sendFinalStepToEdge = false;
-    private static final boolean enableEdgeToEdge = false;
-    private static final boolean SINGLE_AGGREGATION_POINT = false;
     private static final boolean priorityKeys = false; // TODO the current strategy is not improving results.
-    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.EAGER;
-    private static final CacheManager.EvictionPolicy DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy
-            .LFU;
-    private static final int DEFAULT_HISTORY_SIZE = 1;
-    private static final float DEFAULT_BETA = 0.9f;
-    private static final int DEFAULT_REGISTER_THRESHOLD = 5;
-    private static final float DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
-    private static final Coordinator.SelectionStrategy DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy
-            .MAX_ARRIVAL;
-    private static final WorkloadMonitor.WeightType DEFAULT_WEIGHT_TYPE = WorkloadMonitor.WeightType.FADING;
-    private static final int DEFAULT_AGGREGATION_POINT = 0;
+    private static final CacheManager.SizePolicy DEFAULT_SIZE_POLICY;
 
     static {
+        DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
+        laziness = 0.15f;
+        avgBw = 15f;
+        // Experiment Settings
+        numEdges = 6;
+        timestep = 25;
+        window = 900;
+        windowsToRun = 20;
+        enableEdgeToEdge = true;
+        SINGLE_AGGREGATION_POINT = false;
+        DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy.LEAR;
+        DEFAULT_HISTORY_SIZE = 5;
+        DEFAULT_BETA = 0.5f;
+        DEFAULT_REGISTER_THRESHOLD = 3;
+        DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
+        DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy.MAX_ARRIVAL;
+        DEFAULT_WEIGHT_TYPE = WorkloadMonitor.WeightType.AVERAGE;
+
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
         StringBuilder s2Builder = new StringBuilder(String.format("%soptimal-w%d", inputFile, window));
         StringBuilder s3Builder = new StringBuilder(String.format("%sedges-w%d", inputFile, window));
         StringBuilder s4Builder = new StringBuilder(String.format("%slog-w%d", inputFile, window));
         StringBuilder arrivalFile = new StringBuilder(String.format("%sarrival-w%d.csv", inputFile, window));
+        StringBuilder uBuilder = new StringBuilder(String.format("%supdates-w%d", inputFile, window));
         if (enableEdgeToEdge) {
             sBuilder.append("-e2e");
             s2Builder.append("-e2e");
@@ -89,6 +108,7 @@ public class MultiEdgeExperiments {
         s2Builder.append(".csv");
         s3Builder.append(".csv");
         s4Builder.append(".txt");
+        uBuilder.append(".csv");
         try {
             summaryPrinter = new PrintWriter(new FileOutputStream(new File(sBuilder.toString())));
             summaryPrinter.append("window-counter,w,edges,total-keys,total-arrivals,total-e-updates,total-c-updates," +
@@ -101,6 +121,8 @@ public class MultiEdgeExperiments {
             optimalPrinter = new PrintWriter(new FileOutputStream(new File(s2Builder.toString())));
             optimalPrinter.append("window-counter,w,edges,ob-center-updates,e2e-center-updates,e2e-updates,oblivious," +
                     "coordinated,gain").append("\n");
+            uPrinter = new PrintWriter(new FileOutputStream(new File(uBuilder.toString())));
+            uPrinter.append("window-counter,timestep,edge-id,center-updates,e2e-updates").append("\n");
             logger = new PrintWriter(new FileOutputStream(new File(s4Builder.toString())));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -161,6 +183,8 @@ public class MultiEdgeExperiments {
         logger.close();
         arrivalPrinter.flush();
         arrivalPrinter.close();
+        uPrinter.flush();
+        uPrinter.close();
     }
 
     private static void printConfigurations() {
@@ -171,12 +195,13 @@ public class MultiEdgeExperiments {
                         "\nDEFAULT_EVICTION_POLICY:%s\nDEFAULT_HISTORY_SIZE:%d\nDEFAULT_BETA:%f" +
                         "\nDEFAULT_REGISTER_THRESHOLD" +
                         ":%d\nDEFAULT_UNREGISTER_PERCENTAGE:%f\nDEFAULT_COORDINATOR_SELECTION:%s" +
-                        "\nSINGLE_AGGREGATION_POINT:%s", numEdges, timestep,
+                        "\nSINGLE_AGGREGATION_POINT:%s\nDEFAULT_WEIGHT_TYPE:%s", numEdges, timestep,
                 window, laziness, avgBw, DEFAULT_INTER_PRICE, DEFAULT_INTRA_PRICE, String.valueOf
                         (sendFinalStepToEdge), String.valueOf(enableEdgeToEdge), String.valueOf(priorityKeys),
                 DEFAULT_SIZE_POLICY.toString(), DEFAULT_EVICTION_POLICY.toString(), DEFAULT_HISTORY_SIZE,
                 DEFAULT_BETA, DEFAULT_REGISTER_THRESHOLD, DEFAULT_UNREGISTER_PERCENTAGE,
-                DEFAULT_COORDINATOR_SELECTION.toString(), String.valueOf(SINGLE_AGGREGATION_POINT));
+                DEFAULT_COORDINATOR_SELECTION.toString(), String.valueOf(SINGLE_AGGREGATION_POINT),
+                DEFAULT_WEIGHT_TYPE.toString());
         System.out.println(s);
         logger.println(s);
     }
@@ -292,7 +317,11 @@ public class MultiEdgeExperiments {
     }
 
     private static Map<Integer, List<Long>> processNextTimeStep(int eId, long time) {
-        long[] allUpdates = edges[eId].trigger(time, windowCounter * window, avgBw);
+
+        float bw = avgBw;
+//        if (SINGLE_AGGREGATION_POINT && eId == DEFAULT_AGGREGATION_POINT)
+//            bw = 15.0f;
+        long[] allUpdates = edges[eId].trigger(time, windowCounter * window, bw);
 
         sanityCounter += allUpdates.length;
         long[] updatesToCenter;
@@ -330,7 +359,10 @@ public class MultiEdgeExperiments {
 //        eUpdateSize[eId].add(allUpdates.length);
         cUpdatesPerWindow[eId] += updatesToCenter.length;
 //        cUpdateSize[eId].add(updatesToCenter.length);
-        //TODO add statistics for edge to edge communication
+        int centerUpdates = updatesToCenter.length;
+        int e2eUpdates = allUpdates.length - centerUpdates;
+        uPrinter.append(String.format("%d,%d,%d,%d,%d", windowCounter, time, eId, centerUpdates, e2eUpdates)).append
+                ("\n");
 
         return updatesPerEdge;
     }
@@ -344,7 +376,7 @@ public class MultiEdgeExperiments {
         for (int j = 0; j < edges.length; j++) {
             Map<Long, Key> arrivalHistories = edges[j].getWorkloadManager().getArrivalsHistories();
             for (Key k : arrivalHistories.values()) {
-                String record = String.format("%d,%d,%d,%d,%d", j, windowCounter, k.getId(), k
+                String record = String.format("%d,%d,%d,%f,%d", j, windowCounter, k.getId(), k
                         .getEstimatedArrivalRate(), k
                         .getCurrentArrival());
                 arrivalPrinter.append(record).append("\n");
@@ -364,7 +396,7 @@ public class MultiEdgeExperiments {
 //        for (Edge e : edges) {
         Set<Key> pendingKeys = edges[eId].getWorkloadManager().getPendingForRegister();
         long[] keys = new long[pendingKeys.size()];
-        int[] arrivals = new int[pendingKeys.size()];
+        float[] arrivals = new float[pendingKeys.size()];
         int i = 0;
         for (Key k : pendingKeys) {
             keys[i] = k.getId();

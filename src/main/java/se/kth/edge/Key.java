@@ -12,7 +12,7 @@ public class Key {
     private int pointer;
     private int currentArrival;
     private final float[] weights; // from the oldest to the latest
-    private int estimatedArrivalRate = 0;
+    private float estimatedArrivalRate = 0;
 
     /**
      * @param id
@@ -45,8 +45,7 @@ public class Key {
 
     }
 
-
-    private int computeEstimatedArrivalRate() {
+    private float computeEstimatedArrivalRate() {
         float arrival = 0;
         int index = pointer;
         for (int i = 0; i < arrivalHistory.length; i++) {
@@ -54,11 +53,12 @@ public class Key {
             index++;
         }
 
-        return Math.round(arrival);
+        return arrival;
     }
 
-    public int getEstimatedArrivalRate() {
+    public float getEstimatedArrivalRate() {
         return estimatedArrivalRate;
+//        return 4.50f;
     }
 
     public int getCurrentArrival() {

@@ -9,7 +9,7 @@ public class CacheEntry {
     public int numArrivals;
     public long lastUpdateTime;
     public boolean specialPriority = false; // For the keys that the edge is its coordinator.
-    public int estimatedRate;
+    public float estimatedRate;
 
     public CacheEntry(long key) {
         this.key = key;

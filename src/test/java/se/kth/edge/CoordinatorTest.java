@@ -17,12 +17,12 @@ public class CoordinatorTest {
         long k2 = 2;
         long k3 = 3;
         long[] keys = new long[]{k1, k2, k3};
-        int[] arrivals = new int[]{1, 1, 1};
+        float[] arrivals = new float[]{1, 1, 1};
         c.registerKeys(0, keys, arrivals);
         long[] keys2 = new long[]{k1, k3};
-        int[] arrivals2 = new int[]{1, 1};
+        float[] arrivals2 = new float[]{1, 1};
         c.registerKeys(2, keys2, arrivals2);
-        Map<Long, int[]> map = c.getNewKeyArrivals();
+        Map<Long, float[]> map = c.getNewKeyArrivals();
         assert map.get(k1)[0] == 1;
         assert map.get(k1)[1] == 0;
         assert map.get(k1)[2] == 1;
@@ -40,9 +40,9 @@ public class CoordinatorTest {
         Coordinator c = new Coordinator(numEdges);
         long k1 = 1;
         long k2 = 2;
-        int[] k1Edges = new int[]{1, 0, 1};
-        int[] k2Edges = new int[]{1, 0, 1};
-        HashMap<Long, int[]> newArrivals = new HashMap<>();
+        float[] k1Edges = new float[]{1, 0, 1};
+        float[] k2Edges = new float[]{1, 0, 1};
+        HashMap<Long, float[]> newArrivals = new HashMap<>();
         newArrivals.put(k1, k1Edges);
         newArrivals.put(k2, k2Edges);
         Map<Long, Integer> keyEdgeMap = c.applyUpdates(newArrivals, new HashMap<>());
@@ -66,9 +66,9 @@ public class CoordinatorTest {
         assert c3 == 1;
 
         long k3 = 3;
-        k1Edges = new int[]{0, 1, 0};
-        k2Edges = new int[]{0, 1, 0};
-        int[] k3Edges = new int[]{1, 1, 1};
+        k1Edges = new float[]{0, 1, 0};
+        k2Edges = new float[]{0, 1, 0};
+        float[] k3Edges = new float[]{1, 1, 1};
         newArrivals = new HashMap<>();
         newArrivals.put(k1, k1Edges);
         newArrivals.put(k2, k2Edges);
@@ -118,8 +118,8 @@ public class CoordinatorTest {
 
         // MAX Arrival Strategy
         c = new Coordinator(numEdges, Coordinator.SelectionStrategy.MAX_ARRIVAL);
-        k1Edges = new int[]{2, 0, 1};
-        k2Edges = new int[]{1, 0, 2};
+        k1Edges = new float[]{2, 0, 1};
+        k2Edges = new float[]{1, 0, 2};
         newArrivals = new HashMap<>();
         newArrivals.put(k1, k1Edges);
         newArrivals.put(k2, k2Edges);
@@ -141,7 +141,7 @@ public class CoordinatorTest {
         assert c3 == 1;
         assert keyEdgeMap.get(k1) == e1;
         assert keyEdgeMap.get(k2) == e3;
-        k1Edges = new int[]{0, 3, 0};
+        k1Edges = new float[]{0, 3, 0};
         newArrivals = new HashMap<>();
         newArrivals.put(k1, k1Edges);
         keyEdgeMap = c.applyUpdates(newArrivals, new HashMap<>());
