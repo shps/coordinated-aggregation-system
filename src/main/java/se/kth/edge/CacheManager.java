@@ -26,7 +26,6 @@ public class CacheManager {
 
 
     // candidate.
-
     public enum EvictionPolicy {
         LRU,
         LFU,
