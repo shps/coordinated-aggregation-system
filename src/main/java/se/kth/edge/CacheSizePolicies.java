@@ -7,7 +7,7 @@ import java.util.Set;
 /**
  * An implementation of Hybrid, Lazy, and Eager cache size policies based on the paper "Optimizing grouped
  * aggregation in geo-distributed streaming analytics" by Heintz et al. HPDC 2015.
- * 
+ *
  * Created by Hooman on 2017-06-05.
  */
 public class CacheSizePolicies {
