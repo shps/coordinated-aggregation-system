@@ -58,7 +58,7 @@ public class Key {
 
     public float getEstimatedArrivalRate() {
         return estimatedArrivalRate;
-//        return 4.50f;
+//        return 3.604f;
     }
 
     public int getCurrentArrival() {

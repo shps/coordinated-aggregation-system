@@ -12,13 +12,13 @@ import java.util.Set;
 public class DataGenerator {
 
     public static void main(String[] args) throws IOException {
-        int numEdges = 6;
+        int numEdges = 12;
         int numKeys = 1000;
         int window = 7200;
         int numWindow = 20;
         String outputFile = "/Users/ganymedian/Desktop/aggregation/";
-        boolean userVisit = false;
-        boolean fluctuateRates = true;
+        boolean userVisit = true;
+        boolean fluctuateRates = false;
         if (!userVisit) {
             SyntheticDataBuilder builder = new SyntheticDataBuilder(numEdges, numKeys, SyntheticDataBuilder
                     .KDistribution
@@ -57,8 +57,13 @@ public class DataGenerator {
     public static void generateUserVisitPerEdge(int eId, String outputFile) throws IOException {
         String file = "/Users/Ganymedian/Desktop/uservisits/part-0000";
         LinkedList<Tuple> visits = new LinkedList<>();
-        for (int i = eId; i < eId + 1; i++)
+        for (int i = eId; i < eId + 1; i++) {
+            if (i >= 10)
+            {
+                file = "/Users/Ganymedian/Desktop/uservisits/part-000";
+            }
             visits.addAll(UserVisitsFileReader.readTuple(String.format("%s%d", file, i)));
+        }
 
         FileMaker.writeToFile(String.format("%s-stream.csv", outputFile), visits);
     }

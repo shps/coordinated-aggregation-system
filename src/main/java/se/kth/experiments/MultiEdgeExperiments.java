@@ -67,21 +67,21 @@ public class MultiEdgeExperiments {
     static {
         DEFAULT_SIZE_POLICY = CacheManager.SizePolicy.HYBRID;
         laziness = 0.15f;
-        avgBw = 15f;
+        avgBw = 5f;
         // Experiment Settings
-        numEdges = 6;
+        numEdges = 1;
         timestep = 25;
-        window = 900;
+        window = 3600;
         windowsToRun = 25;
-        enableEdgeToEdge = true;
+        enableEdgeToEdge = false;
         SINGLE_AGGREGATION_POINT = false;
-        DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy.LEAR;
-        DEFAULT_HISTORY_SIZE = 10;
-        DEFAULT_BETA = 0.1f;
+        DEFAULT_EVICTION_POLICY = CacheManager.EvictionPolicy.LFU;
+        DEFAULT_HISTORY_SIZE = 1;
+        DEFAULT_BETA = 0.5f;
         DEFAULT_REGISTER_THRESHOLD = 3;
         DEFAULT_UNREGISTER_PERCENTAGE = 0.15f;
         DEFAULT_COORDINATOR_SELECTION = Coordinator.SelectionStrategy.MAX_ARRIVAL;
-        DEFAULT_WEIGHT_TYPE = WorkloadMonitor.WeightType.FADING;
+        DEFAULT_WEIGHT_TYPE = WorkloadMonitor.WeightType.AVERAGE;
 
         StringBuilder sBuilder = new StringBuilder(String.format("%ssummary-w%d", inputFile, window));
         StringBuilder s2Builder = new StringBuilder(String.format("%soptimal-w%d", inputFile, window));
@@ -326,6 +326,7 @@ public class MultiEdgeExperiments {
         sanityCounter += allUpdates.length;
         long[] updatesToCenter;
         Map<Integer, List<Long>> updatesPerEdge;
+//        time % window >= timestep*anumber
         if (time % window != 0 || sendFinalStepToEdge) {
             //Separate the updates that are toward the center from the updates toward the other edges.
             // The updates for the edges will be processed in the next time step.
